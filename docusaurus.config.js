@@ -1,6 +1,6 @@
 module.exports = {
-  title: 'My Site',
-  tagline: 'The tagline of my site',
+  title: 'QueryPie Docs',
+  tagline: '클라우드에 최적화된 DB 접근제어 솔루션',
   url: 'https://chqeuer-io.github.io',
   baseUrl: '/querypie-docs/',
   onBrokenLinks: 'throw',
@@ -9,9 +9,9 @@ module.exports = {
   projectName: 'querypie-docs', // Usually your repo name.
   themeConfig: {
     navbar: {
-      title: 'My Site',
+      title: '',
       logo: {
-        alt: 'My Site Logo',
+        alt: 'QueryPie',
         src: 'img/logo.svg',
       },
       items: [
@@ -21,9 +21,8 @@ module.exports = {
           label: 'Docs',
           position: 'left',
         },
-        {to: 'blog', label: 'Blog', position: 'left'},
         {
-          href: 'https://github.com/facebook/docusaurus',
+          href: 'https://github.com/chequer-io/querypie-docs',
           label: 'GitHub',
           position: 'right',
         },
@@ -36,47 +35,35 @@ module.exports = {
           title: 'Docs',
           items: [
             {
-              label: 'Style Guide',
+              label: 'QueryPie Docs',
               to: 'docs/',
-            },
-            {
-              label: 'Second Doc',
-              to: 'docs/doc2/',
-            },
+            }
           ],
         },
         {
           title: 'Community',
           items: [
             {
-              label: 'Stack Overflow',
-              href: 'https://stackoverflow.com/questions/tagged/docusaurus',
+              label: 'QueryPie.com',
+              href: 'https://querypie.com',
             },
             {
-              label: 'Discord',
-              href: 'https://discordapp.com/invite/docusaurus',
-            },
-            {
-              label: 'Twitter',
-              href: 'https://twitter.com/docusaurus',
-            },
+              label: 'Blog',
+              href: 'https://www.querypie.com/blog/',
+            }
           ],
         },
         {
-          title: 'More',
+          title: 'Support',
           items: [
             {
-              label: 'Blog',
-              to: 'blog',
-            },
-            {
-              label: 'GitHub',
-              href: 'https://github.com/facebook/docusaurus',
+              label: 'Technical Support',
+              href: 'https://support.querypie.com/hc/ko',
             },
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} My Project, Inc. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} CHEQUER Global, Inc.`,
     },
   },
   presets: [
