@@ -15,18 +15,18 @@ slug: /
 | 컴포넌트 명 | 설명 |
 | :---: | :---: |
 |   QueryPie Api| Rest Api 서버  & Admin|
-|:   QueryPie App :| QueryPie의 Web Client   |
+|:   QueryPie App :| QueryPie 의 Web Client   |
 | ^^ | ^^ 자동 완성  |
 | ^^ | ^^ 쿼리 수행 |
-|   QueryPie DB| QueryPie 가 metadata들을 관리하는 DB  |
+|   QueryPie DB| QueryPie 가 metadata 들을 관리하는 DB  |
 
 # 2. QueryPie DB 설치
 
 ## 2.1 개요
 * QueryPie 에서는 관리할 Database 들의 metadata를 저장하기 위하여 MySQL 서버를 필요로 합니다.
 * mysql 5.7을 권장합니다.
-* 설치 및 업그레이드시 Table Schema 들을 적용하기 위하여 DDL, DML권한이 필요합니다.
-* Docker Image 를 띄울 때 해당 instance의 정보를 Option에 적어 주어야 합니다.
+* 설치 및 업그레이드시 Table Schema 들을 적용하기 위하여 DDL, DML 권한이 필요합니다.
+* Docker Image 를 띄울 때 해당 instance 의 정보를 Option 에 적어 주어야 합니다.
 
 ## 2.2 User 및 DB 생성 예제 
 ```mysql
@@ -43,7 +43,7 @@ GRANT ALL privileges ON querypie.* TO querypie@'%';
 
 * QueryPie 에서는 Redis 서버를 내부적으로 사용하며, 설치 전 redis instance 가 준비되어 있어야 합니다.
 * Redis 5 이상을 권장합니다.
-* EKS 의 helm을 사용하시는 분들은 자동으로 설치가 됩니다.
+* EKS 의 helm 을 사용하시는 분들은 자동으로 설치가 됩니다.
 * Docker Image 를 띄울 때 해당 instance 의 정보를 Option 에 적어 주어야 합니다.
 
 # 4. QueryPie Docker Registry
@@ -56,8 +56,10 @@ GRANT ALL privileges ON querypie.* TO querypie@'%';
 ## 4.2 Registry 정보
 * Private Registry 
 ```text
-url : dockerpie.querypie.com
+domain name : dockerpie.querypie.com
+static ip : 13.124.6.67
 ```
+* On-Premise 환경에서 설치하시는 분들은 위 registry 에 접근이 가능하도록 Security Group 을 조정해주십시오.
 
 #5. Deploy 예제
 ## 5.1 개요
@@ -93,7 +95,7 @@ helm repo add chequer https://chequer-io.github.io/querypie-deployment/helm-char
 helm repo update
 ```
 
-* 각 환경에 맞는 values.yaml 를 작성하여 QueryPie를 install 합니다.
+* 각 환경에 맞는 values.yaml 를 작성하여 QueryPie 를 install 합니다.
 
 ```yaml
 apiImage:
