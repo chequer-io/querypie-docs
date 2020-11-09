@@ -1,203 +1,143 @@
 ---
 id: doc1
-title: Style Guide
-sidebar_label: Style Guide
+title: QueryPie Install Guide
+sidebar_label: QueryPie Brief Architecture
 slug: /
 ---
 
-You can write content using [GitHub-flavored Markdown syntax](https://github.github.com/gfm/).
+# 1. QueryPie
 
-## Markdown Syntax
+## 1.1 Brief Architecture
+* 단순한 구조를 지향하고 있습니다. 
 
-To serve as an example page when styling markdown based Docusaurus sites.
+## 1.2 Components
+* 설명
 
-## Headers
+| 컴포넌트 명 | 설명 |
+| :---: | :---: |
+|   QueryPie Api| Rest Api 서버  & Admin|
+|:   QueryPie App :| QueryPie의 Web Client   |
+| ^^ | ^^ 자동 완성  |
+| ^^ | ^^ 쿼리 수행 |
+|   QueryPie DB| QueryPie 가 metadata들을 관리하는 DB  |
 
-# H1 - Create the best documentation
+# 2. QueryPie DB 설치
 
-## H2 - Create the best documentation
+## 2.1 개요
+* QueryPie 에서는 관리할 Database 들의 metadata를 저장하기 위하여 MySQL 서버를 필요로 합니다.
+* mysql 5.7을 권장합니다.
+* 설치 및 업그레이드시 Table Schema 들을 적용하기 위하여 DDL, DML권한이 필요합니다.
 
-### H3 - Create the best documentation
+## 2.2 User 및 DB 생성 예제 
+```mysql
+CREATE USER 'querypie'@'%' IDENTIFIED BY 'password';
 
-#### H4 - Create the best documentation
+CREATE database querypie CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 
-##### H5 - Create the best documentation
-
-###### H6 - Create the best documentation
-
----
-
-## Emphasis
-
-Emphasis, aka italics, with *asterisks* or _underscores_.
-
-Strong emphasis, aka bold, with **asterisks** or __underscores__.
-
-Combined emphasis with **asterisks and _underscores_**.
-
-Strikethrough uses two tildes. ~~Scratch this.~~
-
----
-
-## Lists
-
-1. First ordered list item
-1. Another item
-   - Unordered sub-list.
-1. Actual numbers don't matter, just that it's a number
-   1. Ordered sub-list
-1. And another item.
-
-* Unordered list can use asterisks
-
-- Or minuses
-
-+ Or pluses
-
----
-
-## Links
-
-[I'm an inline-style link](https://www.google.com/)
-
-[I'm an inline-style link with title](https://www.google.com/ "Google's Homepage")
-
-[I'm a reference-style link][arbitrary case-insensitive reference text]
-
-[You can use numbers for reference-style link definitions][1]
-
-Or leave it empty and use the [link text itself].
-
-URLs and URLs in angle brackets will automatically get turned into links. http://www.example.com/ or <http://www.example.com/> and sometimes example.com (but not on GitHub, for example).
-
-Some text to show that the reference links can follow later.
-
-[arbitrary case-insensitive reference text]: https://www.mozilla.org/
-[1]: http://slashdot.org/
-[link text itself]: http://www.reddit.com/
-
----
-
-## Images
-
-Here's our logo (hover to see the title text):
-
-Inline-style: ![alt text](https://github.com/adam-p/markdown-here/raw/master/src/common/images/icon48.png 'Logo Title Text 1')
-
-Reference-style: ![alt text][logo]
-
-[logo]: https://github.com/adam-p/markdown-here/raw/master/src/common/images/icon48.png 'Logo Title Text 2'
-
-Images from any folder can be used by providing path to file. Path should be relative to markdown file.
-
-![img](../static/img/logo.svg)
-
----
-
-## Code
-
-```javascript
-var s = 'JavaScript syntax highlighting';
-alert(s);
+GRANT ALL privileges ON querypie.* TO querypie@'%';
 ```
 
-```python
-s = "Python syntax highlighting"
-print(s)
+# 3. QueryPie Docker Registry
+
+## 3.1 개요
+ * QueryPie의 컴포넌트들은 Private Docker Registry에서 관리합니다.
+ * 인증 정보는 설치 가이드와 함께 전달됩니다.
+ 
+```text
+url : dockerpie.querypie.com
 ```
 
-```
-No language indicated, so no syntax highlighting.
-But let's throw in a <b>tag</b>.
-```
+# 4. QueryPie 배포 - EKS
 
-```js {2}
-function highlightMe() {
-  console.log('This line can be highlighted!');
-}
+* QueryPie의 경우 AWS Load Balancer Controller 사용을 권장하고 있습니다.
+
+```html
+https://github.com/aws/eks-charts/tree/master/stable/aws-load-balancer-controller
 ```
 
----
+* EKS에는 Helm을 이용하여 배포를 합니다.
 
-## Tables
+* helm 저장소를 추가 합니다.
 
-Colons can be used to align columns.
+```shell script
+helm repo add chequer https://chequer-io.github.io/querypie-deployment/helm-chart
+```
 
-| Tables        |      Are      |   Cool |
-| ------------- | :-----------: | -----: |
-| col 3 is      | right-aligned | \$1600 |
-| col 2 is      |   centered    |   \$12 |
-| zebra stripes |   are neat    |    \$1 |
+* helm 저장소를 update 합니다.
 
-There must be at least 3 dashes separating each header cell. The outer pipes (|) are optional, and you don't need to make the raw Markdown line up prettily. You can also use inline Markdown.
+```shell script
+helm repo update
+```
 
-| Markdown | Less      | Pretty     |
-| -------- | --------- | ---------- |
-| _Still_  | `renders` | **nicely** |
-| 1        | 2         | 3          |
+* 각 환경에 맞는 values.yaml 를 작성하여 QueryPie를 install 합니다.
 
----
+```yaml
+apiImage:
+  repository: dockerpie.querypie.com/chequer.io/querypie-api
+  tag: latest
+  pullPolicy: Always
+  replicas: 2
 
-## Blockquotes
+appImage:
+  repository: dockerpie.querypie.com/chequer.io/querypie-app
+  tag: latest
+  pullPolicy: Always
+  replicas: 2
 
-> Blockquotes are very handy in email to emulate reply text. This line is part of the same quote.
+querypiedb:
+  DB_PORT: 3306
+  DB_HOST: 'CHANGE_ME'
+  DB_DATABASE: 'querypie'
+  DB_MAX_CONNECTION_SIZE: 20
+  credentials:
+    DB_USERNAME: 'BASE64_ENCODED_CHANGE_ME'
+    DB_PASSWORD: 'BASE64_ENCODED_CHANGE_ME'
 
-Quote break.
+querypie_redis:
+  REDIS_HOST: 'CHANGE_ME'
+  REDIS_PORT: 6379
+  REDIS_PASSWORD: 'CHANGE_ME'
+  REDIS_EVENTKEY: 'CHANGE_ME'
+  REDIS_DB: 0
 
-> This is a very long line that will still be quoted properly when it wraps. Oh boy let's keep writing to make sure this is long enough to actually wrap for everyone. Oh, you can _put_ **Markdown** into a blockquote.
+imageCredentials:
+  registry: 'dockerpie.querypie.com'
+  username: 'CHANGE_ME'
+  password: 'CHANGE_ME'
 
----
+appIngress:
+  tls: true
+  hostname: 'CHANGE_ME'
+  secretName: 'CHANGE_ME'
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+  rules:
+    http:
+      paths:
+        - path: /
+          backend:
+            serviceName: "querypie-app-service"
+            servicePort: 80
 
-## Inline HTML
-
-<dl>
-  <dt>Definition list</dt>
-  <dd>Is something people use sometimes.</dd>
-
-  <dt>Markdown in HTML</dt>
-  <dd>Does *not* work **very** well. Use HTML <em>tags</em>.</dd>
-</dl>
-
----
-
-## Line Breaks
-
-Here's a line for us to start with.
-
-This line is separated from the one above by two newlines, so it will be a _separate paragraph_.
-
-This line is also a separate paragraph, but... This line is only separated by a single newline, so it's a separate line in the _same paragraph_.
-
----
-
-## Admonitions
-
-:::note
-
-This is a note
-
-:::
-
-:::tip
-
-This is a tip
-
-:::
-
-:::important
-
-This is important
-
-:::
-
-:::caution
-
-This is a caution
-
-:::
-
-:::warning
-
-This is a warning
-
-:::
+apiIngress:
+  tls: true
+  hostname: 'CHANGE_ME'
+  secretName: 'CHANGE_ME'
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+  rules:
+    http:
+      paths:
+        - path: /
+          backend:
+            serviceName: "querypie-api-service"
+            servicePort: 80
+```
