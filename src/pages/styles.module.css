@@ -24,6 +24,23 @@
   justify-content: center;
 }
 
+.getStarted {
+  color: var(--ifm-color-secondary) !important;
+}
+.getStarted:hover {
+  color: var(--ifm-font-color-base) !important;
+}
+
+html[data-theme='dark'] .getStarted {
+  color: var(--ifm-hero-text-color) !important;
+  border-color: var(--ifm-hero-text-color) !important;
+}
+html[data-theme='dark'] .getStarted:hover {
+  color: var(--ifm-font-color-base) !important;
+  background-color: transparent !important;
+  border-color: var(--ifm-font-color-base) !important;
+}
+
 .features {
   display: flex;
   align-items: center;
