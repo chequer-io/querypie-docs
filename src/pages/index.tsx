@@ -44,7 +44,7 @@ const features = [
 function Feature({ imageUrl, title, description }) {
   const imgUrl = useBaseUrl(imageUrl);
   return (
-    <div className={clsx('col col--4', styles.feature)}>
+    <div className={clsx('col col--4', styles.feature, styles.featuresCol4)}>
       <div className={clsx(styles.featuresCol)}>
         <h3 className={clsx(styles.featuresH3)}>{title}</h3>
         {imgUrl && (

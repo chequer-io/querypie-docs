@@ -46,7 +46,10 @@ html[data-theme='dark'] .getStarted:hover {
   align-items: center;
   padding: 2rem 0;
   width: 100%;
-  margin: 10px 0 20px 0;
+}
+
+.featuresCol4 {
+  margin-bottom: 20px;
 }
 
 .featuresCol {
