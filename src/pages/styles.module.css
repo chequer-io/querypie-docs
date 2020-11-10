@@ -59,6 +59,10 @@ html[data-theme='dark'] .getStarted:hover {
   border-radius: 10px;
 }
 
+html[data-theme='dark'] .featuresCol {
+  background: transparent;
+}
+
 .featuresH3 {
   font-size: 26px;
   line-height: 38px;
@@ -67,6 +71,10 @@ html[data-theme='dark'] .getStarted:hover {
   font-weight: bold;
   color: rgb(15, 38, 53);
   text-align: center;
+}
+
+html[data-theme='dark'] .featuresH3 {
+  color: unset;
 }
 
 .featureImage {
