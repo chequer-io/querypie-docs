@@ -8,38 +8,40 @@ import styles from './styles.module.css';
 
 const features = [
   {
-    title: 'Easy to Use',
-    imageUrl: 'img/undraw_docusaurus_mountain.svg',
+    title: 'Optimized for Cloud Environment',
+    imageUrl: 'img/1.png',
     description: (
       <>
-        Docusaurus was designed from the ground up to be easily installed and
-        used to get your website up and running quickly.
+        QueryPie는 AWS, Microsoft Azure, Google Cloud Platform과 같은 클라우드
+        환경에 최적화되어 있습니다. 단 몇 초만에 여러 클라우드 및 리전에 흩어진
+        데이터베이스를 한 곳에서 관리할 수 있도록 동기화합니다.
       </>
     ),
   },
   {
-    title: 'Focus on What Matters',
-    imageUrl: 'img/undraw_docusaurus_tree.svg',
+    title: 'One-Click Installation',
+    imageUrl: 'img/2.png',
     description: (
       <>
-        Docusaurus lets you focus on your docs, and we&apos;ll do the chores. Go
-        ahead and move your docs into the <code>docs</code> directory.
+        Docker, Kubernetes를 비롯해 AWS(ECS, EKS), Google Cloud Platform(GKE),
+        Microsoft Azure(AKS)와 같은 개발 환경에서는 복잡한 과정없이 단 몇분만에
+        간편하게 QueryPie를 설치할 수 있습니다.
       </>
     ),
   },
   {
-    title: 'Powered by React',
-    imageUrl: 'img/undraw_docusaurus_react.svg',
+    title: 'All-In-One DB Solution',
+    imageUrl: 'img/3.png',
     description: (
       <>
-        Extend or customize your website layout by reusing React. Docusaurus can
-        be extended while reusing the same header and footer.
+        데이터베이스 접근제어, 멀티 클라우드, 멀티 리전 동기화, SQL 실행 및 DB
+        인증 기록 감사, 동적 / 정적 데이터 마스킹, Web SQL Editor
       </>
     ),
   },
 ];
 
-function Feature({imageUrl, title, description}) {
+function Feature({ imageUrl, title, description }) {
   const imgUrl = useBaseUrl(imageUrl);
   return (
     <div className={clsx('col col--4', styles.feature)}>
@@ -56,11 +58,12 @@ function Feature({imageUrl, title, description}) {
 
 function Home() {
   const context = useDocusaurusContext();
-  const {siteConfig = {}} = context;
+  const { siteConfig = {} } = context;
   return (
     <Layout
       title={`Hello from ${siteConfig.title}`}
-      description="Description will go into a meta tag in <head />">
+      description="Description will go into a meta tag in <head />"
+    >
       <header className={clsx('hero hero--primary', styles.heroBanner)}>
         <div className="container">
           <h1 className="hero__title">{siteConfig.title}</h1>
@@ -71,7 +74,8 @@ function Home() {
                 'button button--outline button--secondary button--lg',
                 styles.getStarted,
               )}
-              to={useBaseUrl('docs/')}>
+              to={useBaseUrl('docs/')}
+            >
               Get Started
             </Link>
           </div>
