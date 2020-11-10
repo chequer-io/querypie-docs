@@ -1,0 +1,1 @@
+(window.webpackJsonp=window.webpackJsonp||[]).push([[6],{63:function(o){o.exports=JSON.parse('{"allTagsPath":"/querypie-docs/blog/tags","slug":"hello","name":"hello","count":2,"permalink":"/querypie-docs/blog/tags/hello"}')}}]);

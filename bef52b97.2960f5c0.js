@@ -1,1 +1,0 @@
-(window.webpackJsonp=window.webpackJsonp||[]).push([[19],{79:function(e){e.exports=JSON.parse('{"title":"Recent posts","items":[{"title":"Welcome","permalink":"/querypie-docs/blog/welcome"},{"title":"Hello","permalink":"/querypie-docs/blog/hello-world"},{"title":"Hola","permalink":"/querypie-docs/blog/hola"}]}')}}]);
