@@ -73,8 +73,8 @@ static ip : 13.124.6.67
 
 # 6. QueryPie 배포 - EKS
 
-## 6.1 선행조건
-* QueryPie의 경우 AWS Load Balancer Controller 사용을 권장하고 있습니다.
+## 6.1 Prerequisites
+* QueryPie 의 경우 Sticky Session 을 위하여 AWS Load Balancer Controller 사용이 요구 됩니다.
 
 ```html
 https://github.com/aws/eks-charts/tree/master/stable/aws-load-balancer-controller
