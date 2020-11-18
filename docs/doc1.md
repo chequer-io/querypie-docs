@@ -32,13 +32,26 @@ slug: /
 
 * MySQL 설치 후 database와 user를 생성해주어야 합니다.
 
-```
-CREATE USER 'querypie'@'%' IDENTIFIED BY 'password';
+  ```
+  CREATE USER 'querypie'@'%' IDENTIFIED BY 'password';
 
-CREATE database querypie CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+  CREATE database querypie CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 
-GRANT ALL privileges ON querypie.* TO querypie@'%';
-```
+  GRANT ALL privileges ON querypie.* TO querypie@'%';
+  ```
+
+* Helm 을 이용한 설치시에는 아래에 MySQL정보를 Setting해 주십시오.
+
+  ```yaml
+    querypiedb:
+      DB_PORT: 3306
+      DB_HOST: ''
+      DB_DATABASE: ''
+      DB_MAX_CONNECTION_SIZE: 20
+      credentials:
+        DB_USERNAME: ''
+        DB_PASSWORD: ''
+  ```
 
 <h2 id="3-redis-install">3. Redis 설치 (Optional)</h2>
 
