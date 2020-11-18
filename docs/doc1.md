@@ -29,7 +29,10 @@ slug: /
 * Docker Image 를 띄울 때 해당 instance 의 정보를 Option 에 적어 주어야 합니다.
 
 <h3>2.2 User 및 DB 생성 예제</h3> 
-```shell script
+
+* MySQL 설치 후 database와 user를 생성해주어야 합니다.
+
+```
 CREATE USER 'querypie'@'%' IDENTIFIED BY 'password';
 
 CREATE database querypie CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
@@ -56,7 +59,7 @@ GRANT ALL privileges ON querypie.* TO querypie@'%';
 
 <h3>4.2 Registry 정보</h3>
 * Private Registry 
-```text
+```
 domain name : dockerpie.querypie.com
 public ip : 13.124.6.67
 ```
