@@ -1,7 +1,7 @@
 ---
 id: doc1
 title: QueryPie Install Guide
-sidebar_label: QueryPie Brief Architecture
+sidebar_label: QueryPie Install Guide
 slug: /
 ---
 # 1. QueryPie
@@ -23,7 +23,7 @@ slug: /
 # 2. QueryPie DB 설치
 
 ## 2.1 개요
-* QueryPie 에서는 관리할 Database 들의 metadata를 저장하기 위하여 MySQL 서버를 필요로 합니다.
+* QueryPie 에서는 관리할 Database 들의 metadata 를 저장하기 위하여 MySQL 서버를 필요로 합니다.
 * mysql 5.7을 권장합니다.
 * 설치 및 업그레이드시 Table Schema 들을 적용하기 위하여 DDL, DML 권한이 필요합니다.
 * Docker Image 를 띄울 때 해당 instance 의 정보를 Option 에 적어 주어야 합니다.
@@ -57,7 +57,7 @@ GRANT ALL privileges ON querypie.* TO querypie@'%';
 * Private Registry 
 ```text
 domain name : dockerpie.querypie.com
-static ip : 13.124.6.67
+public ip : 13.124.6.67
 ```
 * On-Premise 환경에서 설치하시는 분들은 위 registry 에 접근이 가능하도록 Security Group 을 조정해주십시오.
 
@@ -79,6 +79,13 @@ static ip : 13.124.6.67
 ```html
 https://github.com/aws/eks-charts/tree/master/stable/aws-load-balancer-controller
 ```
+
+* MySQL (>= 5.7.25) 가 필요합니다.
+[QueryPie DB 설치](# 2. QueryPie DB 설치) 를 참고해 주십시오.
+
+* Redis (>= 5) 가 필요합니다. (Optional)
+[Redis 설치](# 3. Redis 설치) 를 참고해 주십시오.
+
 
 ## 6.2 helm을 통한 Install
 * EKS에는 Helm을 이용하여 배포를 합니다.
