@@ -29,7 +29,7 @@ slug: /
 * Docker Image 를 띄울 때 해당 instance 의 정보를 Option 에 적어 주어야 합니다.
 
 <h3>2.2 User 및 DB 생성 예제</h3> 
-```mysql
+```shell script
 CREATE USER 'querypie'@'%' IDENTIFIED BY 'password';
 
 CREATE database querypie CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
