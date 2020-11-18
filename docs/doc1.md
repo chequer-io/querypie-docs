@@ -23,6 +23,7 @@ slug: /
 <h2 id="2-mysql-install">2. QueryPie DB 설치</h2>
 
 <h3>2.1 개요</h3>
+
 * QueryPie 에서는 관리할 Database 들의 metadata 를 저장하기 위하여 MySQL 서버를 필요로 합니다.
 * mysql 5.7을 권장합니다.
 * 설치 및 업그레이드시 Table Schema 들을 적용하기 위하여 DDL, DML 권한이 필요합니다.
