@@ -4,12 +4,12 @@ title: QueryPie Install Guide
 sidebar_label: QueryPie Install Guide
 slug: /
 ---
-# 1. QueryPie
+<h2>1. QueryPie</h2>
 
-## 1.1 Brief Architecture
+<h3>1.1 Brief Architecture</h3>
 * 단순한 구조를 지향하고 있습니다. 
 
-## 1.2 Components
+<h3>1.2 Components</h3>
 * 설명
 
 | 컴포넌트 명 | 설명 |
@@ -20,7 +20,7 @@ slug: /
 | ^^ | ^^ 쿼리 수행 |
 |   QueryPie DB| QueryPie 가 metadata 들을 관리하는 DB  |
 
-# 2. QueryPie DB 설치
+<h2 id="2-mysql-install">2. QueryPie DB 설치</h2>
 
 ## 2.1 개요
 * QueryPie 에서는 관리할 Database 들의 metadata 를 저장하기 위하여 MySQL 서버를 필요로 합니다.
@@ -37,7 +37,7 @@ CREATE database querypie CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 GRANT ALL privileges ON querypie.* TO querypie@'%';
 ```
 
-# 3. Redis 설치
+<h2 id="3-redis-install">3. Redis 설치</h2>
 
 ## 3.1 개요
 
@@ -81,10 +81,12 @@ https://github.com/aws/eks-charts/tree/master/stable/aws-load-balancer-controlle
 ```
 
 * MySQL (>= 5.7.25) 가 필요합니다.
-[QueryPie DB 설치](# 2. QueryPie DB 설치) 를 참고해 주십시오.
+
+[QueryPie DB 설치](#2-mysql-install) 를 참고해 주십시오.
 
 * Redis (>= 5) 가 필요합니다. (Optional)
-[Redis 설치](# 3. Redis 설치) 를 참고해 주십시오.
+
+[Redis 설치](#3-redis-install) 를 참고해 주십시오.
 
 
 ## 6.2 helm을 통한 Install
