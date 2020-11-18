@@ -32,7 +32,7 @@ slug: /
 
 * MySQL 설치 후 database와 user를 생성해주어야 합니다.
 
-  ```
+  ```mysql
   CREATE USER 'querypie'@'%' IDENTIFIED BY 'password';
 
   CREATE database querypie CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
@@ -72,10 +72,12 @@ slug: /
 
 <h3>4.2 Registry 정보</h3>
 * Private Registry 
-```
+
+```text
 domain name : dockerpie.querypie.com
 public ip : 13.124.6.67
 ```
+
 * On-Premise 환경에서 설치하시는 분들은 위 registry 에 접근이 가능하도록 Security Group 을 조정해주십시오.
 
 * helm 을 통해 설치하시는 분들은 다음에서 지정이 가능합니다.
@@ -141,9 +143,11 @@ imageCredentials:
   ```
 
 * 각 환경에 맞는 values.yaml 를 작성하여 QueryPie 를 install 합니다.
+
     ```shell script
     helm install querypie chequer/querypie --create-namespace -n chequer-querypie -f xxxx-values.yaml
     ```
+  
 <h3>6.3 helm 을 통한 update</h3>
 
 * helm 을 이용하여 쉽게 update 를 할 수 있습니다. 
