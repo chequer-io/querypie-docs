@@ -107,6 +107,7 @@ imageCredentials:
 <h2>6. QueryPie 배포 - EKS</h2>
 
 <h3>6.1 Prerequisites</h3>
+
 * [helm](https://helm.sh) 을 사용하시기를 권장합니다.
 
 * QueryPie 의 경우 Sticky Session 을 위하여 AWS Load Balancer Controller 사용이 요구 됩니다.
