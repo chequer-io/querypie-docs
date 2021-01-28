@@ -155,7 +155,7 @@ imageCredentials:
 * helm 을 이용하여 쉽게 update 를 할 수 있습니다. 
 
     ```shell script
-    helm upgrade querypie chequer/querypie -n chequer-querypie -f xxxx-values.yaml --version=0.1.21
+    helm upgrade querypie chequer/querypie -n chequer-querypie -f xxxx-values.yaml --version=0.1.22
     ```
 
 <h3>6.4 Sample values.yaml</h3>
@@ -165,13 +165,13 @@ imageCredentials:
     ```yaml
     apiImage:
       repository: dockerpie.querypie.com/chequer.io/querypie-api
-      tag: 7.7.3
+      tag: alpha
       pullPolicy: Always
       replicas: 2
     
     appImage:
       repository: dockerpie.querypie.com/chequer.io/querypie-app
-      tag: 7.7.3
+      tag: alpha
       pullPolicy: Always
       replicas: 2
     
