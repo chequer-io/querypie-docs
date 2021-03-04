@@ -165,13 +165,13 @@ imageCredentials:
     ```yaml
     apiImage:
       repository: dockerpie.querypie.com/chequer.io/querypie-api
-      tag: 8.1.5
+      tag: 8.1.6
       pullPolicy: Always
       replicas: 2
     
     appImage:
       repository: dockerpie.querypie.com/chequer.io/querypie-app
-      tag: 8.1.5
+      tag: 8.1.6
       pullPolicy: Always
       replicas: 2
     
