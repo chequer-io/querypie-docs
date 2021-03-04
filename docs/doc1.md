@@ -147,7 +147,7 @@ imageCredentials:
 * 각 환경에 맞는 values.yaml 를 작성하여 QueryPie 를 install 합니다.
 
     ```shell script
-    helm install querypie chequer/querypie --create-namespace -n chequer-querypie -f xxxx-values.yaml --version=0.1.21
+    helm install querypie chequer/querypie --create-namespace -n chequer-querypie -f xxxx-values.yaml --version=0.1.23
     ```
   
 <h3>6.3 helm 을 통한 update</h3>
@@ -155,7 +155,7 @@ imageCredentials:
 * helm 을 이용하여 쉽게 update 를 할 수 있습니다. 
 
     ```shell script
-    helm upgrade querypie chequer/querypie -n chequer-querypie -f xxxx-values.yaml --version=0.1.22
+    helm upgrade querypie chequer/querypie -n chequer-querypie -f xxxx-values.yaml --version=0.1.23
     ```
 
 <h3>6.4 Sample values.yaml</h3>
@@ -165,13 +165,13 @@ imageCredentials:
     ```yaml
     apiImage:
       repository: dockerpie.querypie.com/chequer.io/querypie-api
-      tag: alpha
+      tag: 8.1.5
       pullPolicy: Always
       replicas: 2
     
     appImage:
       repository: dockerpie.querypie.com/chequer.io/querypie-app
-      tag: alpha
+      tag: 8.1.5
       pullPolicy: Always
       replicas: 2
     
