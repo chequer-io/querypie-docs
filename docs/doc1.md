@@ -113,6 +113,10 @@ imageCredentials:
 
 * kubernetes 에 querypie를 설치하는 방법을 설명합니다.
 
+* EKS를 사용하시는 분들은 [EKS 설정](#7-eks-setting) 를 먼저 참고해주십시오.
+
+* GKE를 사용하시는 분들은 [GKE 설정](#8-gke-setting) 를 먼저 참고해주십시오.
+
 * [helm](https://helm.sh) 을 사용하시기를 권장합니다.
 
 * MySQL (>= 5.7.25) 가 필요합니다.
@@ -240,7 +244,7 @@ imageCredentials:
     use_intenal_redis: true
     ```
 
-<h2>7. EKS 설정</h2>
+<h2 id="7-eks-setting">7. EKS 설정</h2>
 
 * querypie를 AWS상에서 효율적으로 설치하고 최신으로 유지하는 방법은 EKS상에서 운영하는 것입니다.
 
@@ -277,7 +281,7 @@ imageCredentials:
   ```
   [Load Balancer Controller Installation](https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/deploy/installation/) 을 참고해주십시오.
 
-<h2>8. GKE 설정</h2>
+<h2 id="8-gke-setting">8. GKE 설정</h2>
 
 <h3>8.1 Prerequisites</h3>
 
