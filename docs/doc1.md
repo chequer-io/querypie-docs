@@ -106,160 +106,10 @@ imageCredentials:
  ![Privacy Zone](../static/img/privacy-zone.png)
 
 
-<h2>6. EKS 설정</h2>
 
-* querypie를 AWS상에서 효율적으로 설치하고 최신으로 유지하는 방법은 EKS상에서 운영하는 것입니다.
+<h2>6. QueryPie 설치 및 업데이트 - Helm</h2>
 
-<h3>6.1 QueryPie를 위한 EKS cluster 생성</h3>
-* 이미 기존의 cluster가 있으시거나, 익숙하신 분들은 이 단계를 건너 뛰십시오.
-
-* cluster를 생성합니다.
-  * 원하시는 region에서 [EKS > Clusters > Create EKS cluster](https://ap-northeast-2.console.aws.amazon.com/eks/home?region=ap-northeast-2#/cluster-create)를 클릭하여 진행합니다.
-    
-    * version은 1.18 이상을 선택합니다.
-    
-    * Cluster Service Role에서는 위에서 생성한 <strong>iam_querypie_cluster</strong> 를 선택합니다.
-    
-    * Tags를 지정합니다. (optional)
-
-    ![Public Zone](../static/img/cluster_1.png)
-    
-    * Netwoking은 설치 되는 환경에 맞추어 설정합니다.
-      
-    ![Public Zone](../static/img/cluster_2.png)
-    
-    * Logging은 켜시는 것을 권장합니다. (optional)
-
-    ![Public Zone](../static/img/cluster_3.png)
-
-    * Review 후 생성 완료합니다.
-
-    ![Public Zone](../static/img/cluster_4.png)
-
-* QueryPie 의 경우 AWS Load Balancer Controller를 설치 합니다.
-
-  ```html
-  https://github.com/kubernetes-sigs/aws-load-balancer-controller
-  ```
-  [Load Balancer Controller Installation](https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/deploy/installation/) 을 참고해주십시오.
-
-<h2>7. GKE 설정</h2>
-
-<h3>7.1 Prerequisites</h3>
-
-* querypie를 GCP상에서 효율적으로 설치하고 최신으로 유지하는 방법은 GKE상에서 운영하는 것입니다.
-
-* [Google Cloud Sdk](https://cloud.google.com/sdk/docs/install) 를 먼저 설치해주십시오.
-
-* kubernetes api를 enable 해주십시오.
-  
-   ```shell
-   gcloud services enable container.googleapis.com
-   ```  
-
-* IAM Service Account Credentials api를 enable 해주십시오.
-
-   ```shell
-    gcloud services enable iamcredentials.googleapis.com
-   ```
-
-* sqladmin api 를 enable 해주십시오.
-
-  ```shell
-  gcloud services enable sqladmin.googleapis.com
-  ```
-  
-* 다음의 권한들이 필요합니다.
-  ```shell
-  container.clusters.create
-  container.clusters.update
-  iam.serviceAccounts.setIamPolicy
-  ```
-
-<h3>7.1 Project 생성</h3>
-
-* 이미 project가 생성되어 있다면 이 과정은 생략해주십시오.
-
-  <pre><code lang="shell script">gcloud projects create <b>PROJECT_ID</b> --organization=<b>RGANIZATION_ID</b></code></pre>
-
-  예제).
-  ```shell
-  gcloud projects create querypie --organization=614642268215
-  ```
-
-<h3>7.2 GKE Cluster 생성</h3>
-
-* 이미 cluster가 생성되어 있다면 이 과정은 생략해주십시오.
-
-  <pre><code lang="shell script">gcloud container clusters create querypie --zone <b>ZONE_ID</b> --project <b>PROJECT_ID</b> --workload-pool=<b>PROJECT_ID</b>.svc.id.goog --workload-metadata=GKE_METADATA</code></pre>
-
-  예제).
-  ```shell
-  gcloud container clusters create querypie --zone asia-northeast3-a --project chequer --workload-pool=querypie.svc.id.goog --workload-metadata=GKE_METADATA
-  ```
-
-* 생성된 cluster는 다음과 같이 확인이 가능합니다.
-
-   예제).
-   ```shell
-   gcloud container clusters describe querypie --zone 'asia-northeast3-a'
-   ```
-
-* cluster와 통신하기 위하여 kubectl 을 구성합니다.
-
-   예제).
-   ```shell
-   gcloud container clusters get-credentials querypie --zone asia-northeast3-a --project querypie
-   ```
-  
-<h3>7.3 Google Service Account 생성</h3>
-
-* google service account를 생성합니다.
-
-   <pre><code lang="shell">gcloud iam service-accounts create <b>GSA_NAME</b></code></pre>
-
-   예제).
-   ```shell
-   gcloud iam service-accounts create querypie
-   ```
-  
-* google service account를 만들고 이를 kubernetes의 service account가 google service account로 동작하도록 허용합니다.
-  
-  <pre><code lang="shell">gcloud iam service-accounts add-iam-policy-binding \
-    --role roles/iam.workloadIdentityUser \
-    --member "serviceAccount:querypie.svc.id.goog[<b>K8S_NAMESPACE</b>/<b>KSA_NAME</b>]" \
-    <b>GSA_NAME</b>@<b>PROJECT_ID</b>.iam.gserviceaccount.com</code></pre>
-
-  예제).
-
-* 기존에 설치된 querypie가 있다면 다음과 같이 kubernetes 의 service account에 annotation을 추가해줍니다.
-
-  <pre><code lang="shell">
-  kubectl annotate serviceaccount \
-  --namespace <b>K8S_NAMESPACE</b> \
-  <b>KSA_NAME</b> \
-  iam.gke.io/gcp-service-account=GSA_NAME@PROJECT_ID.iam.gserviceaccount.com</code></pre>
-
-  예제).
-   ```shell
-  kubectl annotate serviceaccount \
-  --namespace <b>querypie</b> \
-  <b>querypie</b> \
-  iam.gke.io/gcp-service-account=querypie@querypie.iam.gserviceaccount.com
-   ```
-
-<h3>7. Tips</h3>
-   ```shell
-    export PROJECT=$(gcloud config list project --format "value(core.project)" )
-    export CLUSTER=workload-id
-    export ZONE=asia-northeast3-a
-    gcloud config set compute/zone $ZONE
-    gcloud config set compute/region us-central1
-    ```
-
-<h2>8. QueryPie 설치 및 업데이트 - Helm</h2>
-
-<h3>8.1 Prerequisites</h3>
+<h3>6.1 Prerequisites</h3>
 
 * kubernetes 에 querypie를 설치하는 방법을 설명합니다.
 
@@ -278,7 +128,7 @@ imageCredentials:
   use_builtlin_redis: true
   ```
 
-<h3>8.2 helm을 통한 Install</h3>
+<h3>6.2 helm을 통한 Install</h3>
 
 * helm 저장소를 추가 합니다.
 
@@ -298,7 +148,7 @@ imageCredentials:
     helm install querypie chequer/querypie --create-namespace -n querypie -f xxxx-values.yaml --version=0.1.24
     ```
 
-<h3>8.3 helm 을 통한 update</h3>
+<h3>6.3 helm 을 통한 update</h3>
 
 * helm 을 이용하여 쉽게 update 를 할 수 있습니다.
 
@@ -306,7 +156,7 @@ imageCredentials:
     helm upgrade querypie chequer/querypie -n querypie -f xxxx-values.yaml --version=0.1.24
     ```
 
-<h3>8.4 Sample values.yaml - for EKS</h3>
+<h3>6.4 Sample values.yaml - for EKS</h3>
 
 * 아래를 참고 하시어 xxxx-values.yaml 를 작성해주시면 됩니다.
 
@@ -388,4 +238,158 @@ imageCredentials:
                   servicePort: 80
     
     use_intenal_redis: true
+    ```
+
+<h2>7. EKS 설정</h2>
+
+* querypie를 AWS상에서 효율적으로 설치하고 최신으로 유지하는 방법은 EKS상에서 운영하는 것입니다.
+
+<h3>7.1 QueryPie를 위한 EKS cluster 생성</h3>
+* 이미 기존의 cluster가 있으시거나, 익숙하신 분들은 이 단계를 건너 뛰십시오.
+
+* cluster를 생성합니다.
+  * 원하시는 region에서 [EKS > Clusters > Create EKS cluster](https://ap-northeast-2.console.aws.amazon.com/eks/home?region=ap-northeast-2#/cluster-create)를 클릭하여 진행합니다.
+    
+    * version은 1.18 이상을 선택합니다.
+    
+    * Cluster Service Role에서는 위에서 생성한 <strong>iam_querypie_cluster</strong> 를 선택합니다.
+    
+    * Tags를 지정합니다. (optional)
+
+    ![Public Zone](../static/img/cluster_1.png)
+    
+    * Netwoking은 설치 되는 환경에 맞추어 설정합니다.
+      
+    ![Public Zone](../static/img/cluster_2.png)
+    
+    * Logging은 켜시는 것을 권장합니다. (optional)
+
+    ![Public Zone](../static/img/cluster_3.png)
+
+    * Review 후 생성 완료합니다.
+
+    ![Public Zone](../static/img/cluster_4.png)
+
+* QueryPie 의 경우 AWS Load Balancer Controller를 설치 합니다.
+
+  ```html
+  https://github.com/kubernetes-sigs/aws-load-balancer-controller
+  ```
+  [Load Balancer Controller Installation](https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/deploy/installation/) 을 참고해주십시오.
+
+<h2>8. GKE 설정</h2>
+
+<h3>8.1 Prerequisites</h3>
+
+* querypie를 GCP상에서 효율적으로 설치하고 최신으로 유지하는 방법은 GKE상에서 운영하는 것입니다.
+
+* [Google Cloud Sdk](https://cloud.google.com/sdk/docs/install) 를 먼저 설치해주십시오.
+
+* kubernetes api를 enable 해주십시오.
+  
+   ```shell
+   gcloud services enable container.googleapis.com
+   ```  
+
+* IAM Service Account Credentials api를 enable 해주십시오.
+
+   ```shell
+    gcloud services enable iamcredentials.googleapis.com
+   ```
+
+* sqladmin api 를 enable 해주십시오.
+
+  ```shell
+  gcloud services enable sqladmin.googleapis.com
+  ```
+  
+* 다음의 권한들이 필요합니다.
+  ```shell
+  container.clusters.create
+  container.clusters.update
+  iam.serviceAccounts.setIamPolicy
+  ```
+
+<h3>8.2 Project 생성</h3>
+
+* 이미 project가 생성되어 있다면 이 과정은 생략해주십시오.
+
+  <pre><code lang="shell script">gcloud projects create <b>PROJECT_ID</b> --organization=<b>RGANIZATION_ID</b></code></pre>
+
+  예제).
+  ```shell
+  gcloud projects create querypie --organization=614642268215
+  ```
+
+<h3>8.3 GKE Cluster 생성</h3>
+
+* 이미 cluster가 생성되어 있다면 이 과정은 생략해주십시오.
+
+  <pre><code lang="shell script">gcloud container clusters create querypie --zone <b>ZONE_ID</b> --project <b>PROJECT_ID</b> --workload-pool=<b>PROJECT_ID</b>.svc.id.goog --workload-metadata=GKE_METADATA</code></pre>
+
+  예제).
+  ```shell
+  gcloud container clusters create querypie --zone asia-northeast3-a --project chequer --workload-pool=querypie.svc.id.goog --workload-metadata=GKE_METADATA
+  ```
+
+* 생성된 cluster는 다음과 같이 확인이 가능합니다.
+
+   예제).
+   ```shell
+   gcloud container clusters describe querypie --zone 'asia-northeast3-a'
+   ```
+
+* cluster와 통신하기 위하여 kubectl 을 구성합니다.
+
+   예제).
+   ```shell
+   gcloud container clusters get-credentials querypie --zone asia-northeast3-a --project querypie
+   ```
+  
+<h3>8.4 Google Service Account 생성</h3>
+
+* google service account를 생성합니다.
+
+   <pre><code lang="shell">gcloud iam service-accounts create <b>GSA_NAME</b></code></pre>
+
+   예제).
+   ```shell
+   gcloud iam service-accounts create querypie
+   ```
+  
+* google service account를 만들고 이를 kubernetes의 service account가 google service account로 동작하도록 허용합니다.
+  
+  <pre><code lang="shell">gcloud iam service-accounts add-iam-policy-binding \
+    --role roles/iam.workloadIdentityUser \
+    --member "serviceAccount:querypie.svc.id.goog[<b>K8S_NAMESPACE</b>/<b>KSA_NAME</b>]" \
+    <b>GSA_NAME</b>@<b>PROJECT_ID</b>.iam.gserviceaccount.com</code></pre>
+
+  예제).
+
+* 기존에 설치된 querypie가 있다면 다음과 같이 kubernetes 의 service account에 annotation을 추가해줍니다.
+
+  <pre><code lang="shell">
+  kubectl annotate serviceaccount \
+  --namespace <b>K8S_NAMESPACE</b> \
+  <b>KSA_NAME</b> \
+  iam.gke.io/gcp-service-account=GSA_NAME@PROJECT_ID.iam.gserviceaccount.com</code></pre>
+
+  예제).
+   ```shell
+  kubectl annotate serviceaccount \
+  --namespace <b>querypie</b> \
+  <b>querypie</b> \
+  iam.gke.io/gcp-service-account=querypie@querypie.iam.gserviceaccount.com
+   ```
+
+<h3>8.5. Tips</h3>
+
+* 다음을 미리 환경변수에 지정해 두시면 ZONE, CLUSTER, PROJECT를 매번 gcloud의 parameter로 넘기지 않으셔도 됩니다.
+
+   ```shell
+    export PROJECT=$(gcloud config list project --format "value(core.project)" )
+    export CLUSTER=workload-id
+    export ZONE=asia-northeast3-a
+    gcloud config set compute/zone $ZONE
+    gcloud config set compute/region asia-northeast3-a
     ```
