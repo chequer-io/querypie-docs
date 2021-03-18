@@ -274,12 +274,27 @@ imageCredentials:
 
     ![Public Zone](../static/img/cluster_4.png)
 
+* Node Group을 생성합니다.
+  * Node Group을 위한 IAM Policy는 다음과 같습니다.
+
+    ![Public Zone](../static/img/node_group_iam.png)
+
 * QueryPie 의 경우 AWS Load Balancer Controller를 설치 합니다.
 
   ```html
   https://github.com/kubernetes-sigs/aws-load-balancer-controller
   ```
   [Load Balancer Controller Installation](https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/deploy/installation/) 을 참고해주십시오.
+
+  * eksctl을 이용하지 않고 cluster를 생성한 경우 subnet auto discovery를 위하여 subnets에 tagging을 해주어야하는 경우가 있습니다.
+  다음 링크를 참조하여 tagging을 해주십시오. (이미 설정되어 있을 수 있습니다.)
+    
+  [auto subnet discovery](https://aws.amazon.com/ko/premiumsupport/knowledge-center/eks-vpc-subnet-discovery)
+  
+  ![Public Zone](../static/img/auto_subnet_tagging.png)
+
+  *   
+
 
 <h2 id="8-gke-setting">8. GKE 설정</h2>
 
