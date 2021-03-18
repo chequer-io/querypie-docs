@@ -16,8 +16,9 @@ slug: /
 
 | 컴포넌트 명 | 설명 |
 | :---: | :---: |
-|   QueryPie Api| Rest Api 서버  & Admin|
-|   QueryPie App | QueryPie 의 Web Client   |
+|   QueryPie Api| User, Policy, Meta Data등을 관리하는 Rest Api 서버 |
+|   QueryPie App | Web Sql Client, Management Console   |
+|   QueryPie Proxy| DataGrip등 Web Sql Client를 사용하지 않는 분들을 위한 Proxy 서버  |
 |   QueryPie DB| QueryPie 가 metadata 들을 관리하는 DB  |
 
 <h2 id="2-mysql-install">2. QueryPie DB 설치</h2>
@@ -41,7 +42,7 @@ slug: /
   GRANT ALL privileges ON querypie.* TO querypie@'%';
   ```
 
-* Helm 을 이용한 설치시에는 아래에 MySQL정보를 Setting해 주십시오.
+* Helm 을 이용한 설치시에는 xxx-values.yml에 이 MySQL정보를 Setting해 주십시오.
 
   ```yaml
     querypiedb:
@@ -60,7 +61,7 @@ slug: /
 
 * QueryPie 에서는 Redis 서버를 내부적으로 사용하며, 설치 전 redis instance 가 준비되어 있어야 합니다.
 * Redis 5 이상을 권장합니다.
-* EKS 의 helm 을 사용하시는 분들은 자동으로 설치가 됩니다.
+* EKS 의 helm 을 사용하시는 경우에는 내부의 Redis를 사용하므로 따로 설치가 필요 없습니다.
 * Docker Image 를 띄울 때 해당 instance 의 정보를 Option 에 적어 주어야 합니다.
 
 <h2>4. QueryPie Docker Registry</h2>
@@ -113,9 +114,9 @@ imageCredentials:
 
 * kubernetes 에 querypie를 설치하는 방법을 설명합니다.
 
-* EKS를 사용하시는 분들은 [EKS 설정](#7-eks-setting) 를 먼저 참고해주십시오.
+* EKS를 사용하시는 분들은 [EKS 설정](#7-eks-setting) 를 참고해주십시오.
 
-* GKE를 사용하시는 분들은 [GKE 설정](#8-gke-setting) 를 먼저 참고해주십시오.
+* GKE를 사용하시는 분들은 [GKE 설정](#8-gke-setting) 를 참고해주십시오.
 
 * [helm](https://helm.sh) 을 사용하시기를 권장합니다.
 
@@ -126,7 +127,7 @@ imageCredentials:
 * Redis (>= 5) 가 필요합니다. (Optional)
 
   [Redis 설치](#3-redis-install) 를 참고해 주십시오.
-  helm 을 이용하여 설치를 하실 경우에는 다음과 같이 설정해 주시면 따로 redis 설치가 필요 없습니다.
+  helm을 이용하여 설치를 하실 경우에는 다음과 같이 설정해 주시면 따로 redis 설치가 필요 없습니다.
 
   ```yaml
   use_builtlin_redis: true
@@ -149,7 +150,7 @@ imageCredentials:
 * 각 환경에 맞는 values.yaml 를 작성하여 QueryPie 를 install 합니다.
 
     ```shell script
-    helm install querypie chequer/querypie --create-namespace -n querypie -f xxxx-values.yaml --version=0.1.24
+    helm install querypie chequer/querypie --create-namespace -n querypie -f xxxx-values.yaml
     ```
 
 <h3>6.3 helm 을 통한 update</h3>
@@ -157,7 +158,7 @@ imageCredentials:
 * helm 을 이용하여 쉽게 update 를 할 수 있습니다.
 
     ```shell script
-    helm upgrade querypie chequer/querypie -n querypie -f xxxx-values.yaml --version=0.1.24
+    helm upgrade querypie chequer/querypie -n querypie -f xxxx-values.yaml
     ```
 
 <h3>6.4 Sample values.yaml - for EKS</h3>
@@ -167,13 +168,19 @@ imageCredentials:
     ```yaml
     apiImage:
       repository: dockerpie.querypie.com/chequer.io/querypie-api
-      tag: 8.1.6
+      tag: 8.2.1
       pullPolicy: Always
       replicas: 2
     
     appImage:
       repository: dockerpie.querypie.com/chequer.io/querypie-app
-      tag: 8.1.6
+      tag: 8.2.1
+      pullPolicy: Always
+      replicas: 2
+  
+    proxyImage:
+      repository: dockerpie.querypie.com/chequer.io/querypie-app
+      tag: 8.2.1
       pullPolicy: Always
       replicas: 2
     
@@ -251,6 +258,26 @@ imageCredentials:
 <h3>7.1 QueryPie를 위한 EKS cluster 생성</h3>
 * 이미 기존의 cluster가 있으시거나, 익숙하신 분들은 이 단계를 건너 뛰십시오.
 
+* cluster를 위한 IAM Role을 [생성](https://console.aws.amazon.com/iam/home?region=ap-northeast-2#/roles$new?step=type)합니다.
+  * 이 가이드에서는 <strong>iam_querypie_cluster</strong>의 이름으로 생성합니다.
+  
+    * type은 EKS - Cluster를 선택합니다.
+    
+    ![Public Zone](../static/img/iam_1.png)
+
+    * Attached Permissions 를 확인합니다.
+    
+    ![Public Zone](../static/img/iam_2.png)
+
+    * 필요한 Tagging을 진행합니다. (Optional)
+    
+    ![Public Zone](../static/img/iam_3.png)
+
+    * 확인 후 생성을 완료합니다.
+    
+    ![Public Zone](../static/img/iam_4.png)
+
+
 * cluster를 생성합니다.
   * 원하시는 region에서 [EKS > Clusters > Create EKS cluster](https://ap-northeast-2.console.aws.amazon.com/eks/home?region=ap-northeast-2#/cluster-create)를 클릭하여 진행합니다.
     
@@ -274,26 +301,49 @@ imageCredentials:
 
     ![Public Zone](../static/img/cluster_4.png)
 
-* Node Group을 생성합니다.
-  * Node Group을 위한 IAM Policy는 다음과 같습니다.
+* Node Group을 위한 IAM을 생성합니다.
+  * Node Group을 위한 필수 IAM Policy는 다음과 같습니다.
+  
+    | Policy | 비고 |
+    | :--- | :--- |
+    | AmazonEKSWorkerNodePolicy| Default |
+    | AmazonEC2ContainerRegistryReadOnly | Default |
+    | AmazonDynamoDBReadOnlyAccess | DynamoDB의 정보를 읽어와 등록하기 위하여 필요합니다.|
+    | AmazonRDSReadOnlyAccess | RDS의 정보를 읽어와 등록하기 위하여 필요합니다. |
+    | AmazonEKS_CNI_Policy | Default |
 
-    ![Public Zone](../static/img/node_group_iam.png)
+* Node Group 생성
+  * EKS > Clusters > cluster 이름 > Configuration > Compute > Add Node Group을 통해 Node Group을 생성합니다.
 
-* QueryPie 의 경우 AWS Load Balancer Controller를 설치 합니다.
+    * Add Node Group
+
+    ![Public Zone](../static/img/node_group_1.png)
+    
+    * 위에서 생성한 IAM Policy를 지정해 줍니다.
+
+    ![Public Zone](../static/img/node_group_2.png)
+    
+    * 권장하는 Node Group은 m5.large 6 instance 이상의 구성입니다.
+
+    ![Public Zone](../static/img/node_group_3.png)
+
+
+* AWS Load Balancer Controller 설치
+  * alb 사용을 위하여 다음의 설치를 권장합니다.
+  * 직접 alb를 운영하시는 경우 sticky option
 
   ```html
   https://github.com/kubernetes-sigs/aws-load-balancer-controller
   ```
   [Load Balancer Controller Installation](https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/deploy/installation/) 을 참고해주십시오.
 
-  * eksctl을 이용하지 않고 cluster를 생성한 경우 subnet auto discovery를 위하여 subnets에 tagging을 해주어야하는 경우가 있습니다.
-  다음 링크를 참조하여 tagging을 해주십시오. (이미 설정되어 있을 수 있습니다.)
+  * cluster를 직접 생성한 경우 subnet auto discovery를 위하여 subnets에 tagging을 해주어야하는 경우가 있습니다.
+  다음 링크를 참조하여 tagging을 해주십시오.
     
   [auto subnet discovery](https://aws.amazon.com/ko/premiumsupport/knowledge-center/eks-vpc-subnet-discovery)
   
   ![Public Zone](../static/img/auto_subnet_tagging.png)
 
-  *   
 
 
 <h2 id="8-gke-setting">8. GKE 설정</h2>
