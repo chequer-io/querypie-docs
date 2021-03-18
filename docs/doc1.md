@@ -105,149 +105,49 @@ imageCredentials:
 
  ![Privacy Zone](../static/img/privacy-zone.png)
 
-<h2>6. QueryPie 배포 - Helm</h2>
 
-<h3>6.1 Prerequisites</h3>
+<h2>6. EKS 설정</h2>
 
-* [helm](https://helm.sh) 을 사용하시기를 권장합니다.
+* querypie를 AWS상에서 효율적으로 설치하고 최신으로 유지하는 방법은 EKS상에서 운영하는 것입니다.
 
-* QueryPie 의 경우 Sticky Session 을 위하여 AWS Load Balancer Controller 사용이 요구 됩니다.
+<h3>6.1 QueryPie를 위한 EKS cluster 생성</h3>
+* 이미 기존의 cluster가 있으시거나, 익숙하신 분들은 이 단계를 건너 뛰십시오.
+
+* cluster를 생성합니다.
+  * 원하시는 region에서 [EKS > Clusters > Create EKS cluster](https://ap-northeast-2.console.aws.amazon.com/eks/home?region=ap-northeast-2#/cluster-create)를 클릭하여 진행합니다.
+    
+    * version은 1.18 이상을 선택합니다.
+    
+    * Cluster Service Role에서는 위에서 생성한 <strong>iam_querypie_cluster</strong> 를 선택합니다.
+    
+    * Tags를 지정합니다. (optional)
+
+    ![Public Zone](../static/img/cluster_1.png)
+    
+    * Netwoking은 설치 되는 환경에 맞추어 설정합니다.
+      
+    ![Public Zone](../static/img/cluster_2.png)
+    
+    * Logging은 켜시는 것을 권장합니다. (optional)
+
+    ![Public Zone](../static/img/cluster_3.png)
+
+    * Review 후 생성 완료합니다.
+
+    ![Public Zone](../static/img/cluster_4.png)
+
+* QueryPie 의 경우 AWS Load Balancer Controller를 설치 합니다.
 
   ```html
-  https://github.com/aws/eks-charts/tree/master/stable/aws-load-balancer-controller
+  https://github.com/kubernetes-sigs/aws-load-balancer-controller
   ```
+  [Load Balancer Controller Installation](https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/deploy/installation/) 을 참고해주십시오.
 
-* MySQL (>= 5.7.25) 가 필요합니다.
-
-  [QueryPie DB 설치](#2-mysql-install) 를 참고해 주십시오.
-
-* Redis (>= 5) 가 필요합니다. (Optional)
-
-  [Redis 설치](#3-redis-install) 를 참고해 주십시오.
-  helm 을 이용하여 설치를 하실 경우에는 다음과 같이 설정해 주시면 따로 redis 설치가 필요 없습니다.
-
-  ```yaml
-  use_intenal_redis: true
-  ```
-
-<h3>6.2 helm을 통한 Install</h3>
-
-* helm 저장소를 추가 합니다.
-
-  ```shell script
-  helm repo add chequer https://chequer-io.github.io/querypie-deployment/helm-chart
-  ```
-
-* helm 저장소를 update 합니다.
-
-  ```shell script
-  helm repo update
-  ```
-
-* 각 환경에 맞는 values.yaml 를 작성하여 QueryPie 를 install 합니다.
-
-    ```shell script
-    helm install querypie chequer/querypie --create-namespace -n chequer-querypie -f xxxx-values.yaml --version=0.1.23
-    ```
-  
-<h3>6.3 helm 을 통한 update</h3>
-
-* helm 을 이용하여 쉽게 update 를 할 수 있습니다. 
-
-    ```shell script
-    helm upgrade querypie chequer/querypie -n chequer-querypie -f xxxx-values.yaml --version=0.1.23
-    ```
-
-<h3>6.4 Sample values.yaml</h3>
-
-* 아래를 참고 하시어 xxxx-values.yaml 를 작성해주시면 됩니다.
-
-    ```yaml
-    apiImage:
-      repository: dockerpie.querypie.com/chequer.io/querypie-api
-      tag: 8.1.6
-      pullPolicy: Always
-      replicas: 2
-    
-    appImage:
-      repository: dockerpie.querypie.com/chequer.io/querypie-app
-      tag: 8.1.6
-      pullPolicy: Always
-      replicas: 2
-    
-    querypiedb:
-      DB_PORT: 3306
-      DB_HOST: ''
-      DB_DATABASE: ''
-      DB_MAX_CONNECTION_SIZE: 20
-      credentials:
-        DB_USERNAME: ''
-        DB_PASSWORD: ''
-    
-    imageCredentials:
-      registry: 'dockerpie.querypie.com'
-      username: ''
-      password: ''
-    
-    appIngress:
-      tls: true
-      hostname: '*.querypie.com'
-      secretName: null
-      annotations:
-        kubernetes.io/ingress.class: alb
-        alb.ingress.kubernetes.io/scheme: internet-facing
-        alb.ingress.kubernetes.io/target-type: ip
-        alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=86400
-        alb.ingress.kubernetes.io/inbound-cidrs: 127.0.0.1/32, 172.0.0.1/32
-        alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
-        alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-northeast-2:xxxxx:certificate/xxxxx-4d47-493d-85b5-e4086b1e85c1
-        alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
-        nginx.ingress.kubernetes.io/configuration-snippet: |
-          real_ip_header X-Forwarded-For;
-          set_real_ip_from 0.0.0.0/0;
-          proxy_set_header X-QueryPie-Company-Code $http_x-querypie-company-code;
-      rules:
-        - http:
-            paths:
-              - path: /*
-                backend:
-                  serviceName: querypie-app-service
-                  servicePort: 80
-    
-    apiIngress:
-      tls: true
-      hostname: '*.querypie.com'
-      secretName: null
-      annotations:
-        kubernetes.io/ingress.class: alb
-        alb.ingress.kubernetes.io/scheme: internet-facing
-        alb.ingress.kubernetes.io/target-type: ip
-        alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=86400
-        alb.ingress.kubernetes.io/inbound-cidrs: 127.0.0.1/32, 172.0.0.1/32
-        alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
-        alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-northeast-2:xxxxx:certificate/xxxx-4d47-493d-85b5-e4086b1e85c1
-        alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
-        nginx.ingress.kubernetes.io/configuration-snippet: |
-          real_ip_header X-Forwarded-For;
-          set_real_ip_from 0.0.0.0/0;
-          proxy_set_header X-QueryPie-Company-Code $http_x-querypie-company-code;
-      rules:
-        - http:
-            paths:
-              - path: /*
-                backend:
-                  serviceName: querypie-api-service
-                  servicePort: 80
-    
-    use_intenal_redis: true
-    ```
-
-<h2>7. Cloud 설정 - EKS</h2>
-
-
-<h2>7. Cloud 설정 - GKE</h2>
+<h2>7. GKE 설정</h2>
 
 <h3>7.1 Prerequisites</h3>
+
+* querypie를 GCP상에서 효율적으로 설치하고 최신으로 유지하는 방법은 GKE상에서 운영하는 것입니다.
 
 * [Google Cloud Sdk](https://cloud.google.com/sdk/docs/install) 를 먼저 설치해주십시오.
 
@@ -357,4 +257,135 @@ imageCredentials:
     gcloud config set compute/region us-central1
     ```
 
+<h2>8. QueryPie 설치 및 업데이트 - Helm</h2>
 
+<h3>8.1 Prerequisites</h3>
+
+* kubernetes 에 querypie를 설치하는 방법을 설명합니다.
+
+* [helm](https://helm.sh) 을 사용하시기를 권장합니다.
+
+* MySQL (>= 5.7.25) 가 필요합니다.
+
+  [QueryPie DB 설치](#2-mysql-install) 를 참고해 주십시오.
+
+* Redis (>= 5) 가 필요합니다. (Optional)
+
+  [Redis 설치](#3-redis-install) 를 참고해 주십시오.
+  helm 을 이용하여 설치를 하실 경우에는 다음과 같이 설정해 주시면 따로 redis 설치가 필요 없습니다.
+
+  ```yaml
+  use_builtlin_redis: true
+  ```
+
+<h3>8.2 helm을 통한 Install</h3>
+
+* helm 저장소를 추가 합니다.
+
+  ```shell script
+  helm repo add chequer https://chequer-io.github.io/querypie-deployment/helm-chart
+  ```
+
+* helm 저장소를 update 합니다.
+
+  ```shell script
+  helm repo update
+  ```
+
+* 각 환경에 맞는 values.yaml 를 작성하여 QueryPie 를 install 합니다.
+
+    ```shell script
+    helm install querypie chequer/querypie --create-namespace -n querypie -f xxxx-values.yaml --version=0.1.24
+    ```
+
+<h3>8.3 helm 을 통한 update</h3>
+
+* helm 을 이용하여 쉽게 update 를 할 수 있습니다.
+
+    ```shell script
+    helm upgrade querypie chequer/querypie -n querypie -f xxxx-values.yaml --version=0.1.24
+    ```
+
+<h3>8.4 Sample values.yaml - for EKS</h3>
+
+* 아래를 참고 하시어 xxxx-values.yaml 를 작성해주시면 됩니다.
+
+    ```yaml
+    apiImage:
+      repository: dockerpie.querypie.com/chequer.io/querypie-api
+      tag: 8.1.6
+      pullPolicy: Always
+      replicas: 2
+    
+    appImage:
+      repository: dockerpie.querypie.com/chequer.io/querypie-app
+      tag: 8.1.6
+      pullPolicy: Always
+      replicas: 2
+    
+    querypiedb:
+      DB_PORT: 3306
+      DB_HOST: ''
+      DB_DATABASE: ''
+      DB_MAX_CONNECTION_SIZE: 20
+      credentials:
+        DB_USERNAME: ''
+        DB_PASSWORD: ''
+    
+    imageCredentials:
+      registry: 'dockerpie.querypie.com'
+      username: ''
+      password: ''
+    
+    appIngress:
+      tls: true
+      hostname: '*.querypie.com'
+      secretName: null
+      annotations:
+        kubernetes.io/ingress.class: alb
+        alb.ingress.kubernetes.io/scheme: internet-facing
+        alb.ingress.kubernetes.io/target-type: ip
+        alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=86400
+        alb.ingress.kubernetes.io/inbound-cidrs: 127.0.0.1/32, 172.0.0.1/32
+        alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
+        alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-northeast-2:xxxxx:certificate/xxxxx-4d47-493d-85b5-e4086b1e85c1
+        alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+        nginx.ingress.kubernetes.io/configuration-snippet: |
+          real_ip_header X-Forwarded-For;
+          set_real_ip_from 0.0.0.0/0;
+          proxy_set_header X-QueryPie-Company-Code $http_x-querypie-company-code;
+      rules:
+        - http:
+            paths:
+              - path: /*
+                backend:
+                  serviceName: querypie-app-service
+                  servicePort: 80
+    
+    apiIngress:
+      tls: true
+      hostname: '*.querypie.com'
+      secretName: null
+      annotations:
+        kubernetes.io/ingress.class: alb
+        alb.ingress.kubernetes.io/scheme: internet-facing
+        alb.ingress.kubernetes.io/target-type: ip
+        alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=86400
+        alb.ingress.kubernetes.io/inbound-cidrs: 127.0.0.1/32, 172.0.0.1/32
+        alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}, {"HTTPS":443}]'
+        alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-northeast-2:xxxxx:certificate/xxxx-4d47-493d-85b5-e4086b1e85c1
+        alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+        nginx.ingress.kubernetes.io/configuration-snippet: |
+          real_ip_header X-Forwarded-For;
+          set_real_ip_from 0.0.0.0/0;
+          proxy_set_header X-QueryPie-Company-Code $http_x-querypie-company-code;
+      rules:
+        - http:
+            paths:
+              - path: /*
+                backend:
+                  serviceName: querypie-api-service
+                  servicePort: 80
+    
+    use_intenal_redis: true
+    ```
