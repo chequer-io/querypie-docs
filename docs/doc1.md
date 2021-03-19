@@ -9,16 +9,16 @@ slug: /
 <h3>1.1 Brief Architecture</h3>
 * Install (Deploy) 을 위한 간단한 구조를 설명합니다.
 
-  ![Public Zone](../static/img/public-zone.png)
+  ![Public Zone](../static/img/zone_1.png)
 
 <h3>1.2 Components</h3>
 * 설명
 
 | 컴포넌트 명 | 설명 |
-| :---: | :---: |
+| :--- | :--- |
 |   QueryPie Api| User, Policy, Meta Data등을 관리하는 Rest Api 서버 |
 |   QueryPie App | Web Sql Client, Management Console   |
-|   QueryPie Proxy| DataGrip등 Web Sql Client를 사용하지 않는 분들을 위한 Proxy 서버  |
+|   QueryPie Proxy| DataGrip, Workbench를 위한 Proxy 서버  |
 |   QueryPie DB| QueryPie 가 metadata 들을 관리하는 DB  |
 
 <h2 id="2-mysql-install">2. QueryPie DB 설치</h2>
@@ -94,18 +94,21 @@ imageCredentials:
 <h2>5. Deploy 예제</h2>
 <h3>5.1 개요</h3>
 
-* Public Zone 에서의 Deploy 구성도를 예제로 제시합니다.
-* Privacy Zone 에서의 Deploy 구성도를 예제로 제시합니다.
+* 단일 Zone 에서의 Deploy 구성도를 예제로 제시합니다.
+* 여러 Zone 에서의 Deploy 구성도를 예제로 제시합니다.
 
-<h3>5.2 Public Zone 에서의 Deploy 구성도 예제</h3>
+<h3>5.2 단일 Zone 에서의 Deploy 구성도 예제</h3>
 
-  ![Public Zone](../static/img/public-zone.png)
+  ![Public Zone](../static/img/zone_1.png)
 
 
-<h3>5.3 Privacy Zone 에서의 Deploy 구성도 예제</h3>
+<h3>5.3 여러 Zone 에서의 Deploy 구성도 예제</h3>
+  
+  * Privacy Zone 등 여러 Network Zone으로 DB가 나누어져 있으나 모든 Zone들의 DB 는 QueryPie Api서버가 담당하게 됩니다.
+  * 다음과 같은 구성으로 여러 Zone의 DB들을 한군데에서 관리 가능합니다.
+  * 사용자 client를 제외한 구성도 입니다.
 
- ![Privacy Zone](../static/img/privacy-zone.png)
-
+ ![Privacy Zone](../static/img/zone_2.png)
 
 
 <h2>6. QueryPie 설치 및 업데이트 - Helm</h2>
