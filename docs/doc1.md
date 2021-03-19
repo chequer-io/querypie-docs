@@ -9,7 +9,7 @@ slug: /
 <h3>1.1 Brief Architecture</h3>
 * Install (Deploy) 을 위한 간단한 구조를 설명합니다.
 
-  ![Public Zone](../static/img/zone_1.png)
+  ![Public Zone](../static/img/deploy_arch_1.png)
 
 <h3>1.2 Components</h3>
 * 설명
@@ -99,7 +99,7 @@ imageCredentials:
 
 <h3>5.2 단일 Zone 에서의 Deploy 구성도 예제</h3>
 
-  ![Public Zone](../static/img/zone_1.png)
+  ![Public Zone](../static/img/deploy_arch_1.png)
 
 
 <h3>5.3 여러 Zone 에서의 Deploy 구성도 예제</h3>
@@ -108,7 +108,17 @@ imageCredentials:
   * 다음과 같은 구성으로 여러 Zone의 DB들을 한군데에서 관리 가능합니다.
   * 사용자 client를 제외한 구성도 입니다.
 
- ![Privacy Zone](../static/img/zone_2.png)
+ ![Privacy Zone](../static/img/deploy_arch_2.png)
+
+<h3>5.4 필요한 Protocol / Port</h3>
+
+  * 포트는 각 사의 정책에 따라 변경 가능합니다. 문의 부탁드립니다.
+
+| 네트워크 구간 | Protocol / Port |
+| :--- | :--- |
+|   Office, VDI ->  QueryPie App| https / 443 |
+|   Office, VDI -> QueryPie Proxy | TCP / 40000:49999   |
+
 
 
 <h2>6. QueryPie 설치 및 업데이트 - Helm</h2>
