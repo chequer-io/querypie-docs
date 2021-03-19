@@ -261,7 +261,7 @@ imageCredentials:
                   serviceName: querypie-api-service
                   servicePort: 80
     
-    use_intenal_redis: true
+    use_builtin_redis: true
     ```
 
 <h2 id="7-eks-setting">7. EKS 설정</h2>
