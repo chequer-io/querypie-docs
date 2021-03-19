@@ -256,7 +256,7 @@ imageCredentials:
 
 <h2 id="7-eks-setting">7. EKS 설정</h2>
 
-* querypie를 AWS상에서 효율적으로 설치하고 최신으로 유지하는 방법은 EKS상에서 운영하는 것입니다.
+* QueryPie를 AWS상에서 효율적으로 설치하고 최신으로 유지하는 방법은 EKS상에서 운영하는 것입니다.
 
 <h3>7.1 QueryPie를 위한 EKS cluster 생성</h3>
 * 이미 기존의 cluster가 있으시거나, 익숙하신 분들은 이 단계를 건너 뛰십시오.
@@ -353,9 +353,9 @@ imageCredentials:
 
 <h3>8.1 Prerequisites</h3>
 
-* querypie를 GCP상에서 효율적으로 설치하고 최신으로 유지하는 방법은 GKE상에서 운영하는 것입니다.
+* QueryPie를 GCP상에서 효율적으로 설치하고 최신으로 유지하는 방법은 GKE상에서 운영하는 것입니다.
 
-* [Google Cloud Sdk](https://cloud.google.com/sdk/docs/install) 를 먼저 설치해주십시오.
+* [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) 를 먼저 설치해주십시오.
 
 * kubernetes api를 enable 해주십시오.
   
