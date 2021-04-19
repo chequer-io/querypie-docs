@@ -475,3 +475,95 @@ imageCredentials:
     gcloud config set compute/zone $ZONE
     gcloud config set compute/region asia-northeast3-a
     ```
+
+<h2>9. Docker Compose를 이용한 Deploy</h2>
+
+* 간단하게 단일 VM에 띄워서 운영하기 위해서는 docker-compose를 사용하시는 것이 좋습니다.
+* VM은 최소 4Core, 16GB 이상을 권장합니다.  
+* docker 는 20.10.x 이상을 권장해드립니다.
+* 다음은 docker-compose.yml의 예제입니다. 다음 변수들을 환경에 맞게 조정해주십시오.
+* 참고 file을 에 올려둡니다. (예제 파일)[https://github.com/chequer-io/querypie-deployment/raw/master/docker-compose/docker-compose-example.zip]
+
+  | Policy | 비고 |
+  | :--- | :--- |
+  | redis_password| redis password (없는 경우 공백) |
+  | db_host | querypie backend db의 호스트 |
+  | db_username | querypie backend db의 username|
+  | db_password | querypie backend db의 password |
+
+  ```yaml
+  version: "3.9"
+
+  volumes:
+    redis_data:
+      driver: local
+
+  services:
+    redis-server:
+      image: 'dockerpie.querypie.com/chequer.io/redis:6.0-debian-10'
+      healthcheck:
+        test: [ "CMD", "redis-cli", "-a","${redis_password}", "ping" ]
+        interval: 1s
+        timeout: 3s
+        retries: 30
+      environment:
+        - ALLOW_EMPTY_PASSWORD=no
+        - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL
+        - REDIS_PASSWORD=${redis_password}
+        - REDIS_AOF_ENABLED=no
+      command: /opt/bitnami/scripts/redis/run.sh --maxmemory 1024mb
+      ports:
+        - '6379:6379'
+      volumes:
+        - redis_data:/redis/data
+
+    querypie-api:
+      depends_on:
+        db:
+          condition: service_started
+      image: dockerpie.querypie.com/chequer.io/querypie-api:8.4.1
+      healthcheck:
+        test: ["CMD", "wget", "-nv", "http://localhost:8080/health"]
+        start_period: 120s
+        interval: 5s
+        timeout: 3s
+        retries: 5
+      ports:
+        - 8080:80
+      environment:
+        - DB_DRIVER_CLASS=com.mysql.cj.jdbc.Driver
+        - DB_JDBC_URL=jdbc:mysql://${db_host}:3306/querypie?useSSL=false&autoReconnect=true&validationQuery=select 1&useUnicode=true&characterEncoding=UTF-8&allowPublicKeyRetrieval=true&serverTimezone=UTC
+        - DB_USERNAME=${db_username}
+        - DB_PASSWORD=${db_password}
+        - DB_MAX_CONNECTION_SIZE=30
+
+    querypie-app:
+      depends_on:
+        redis-server:
+          condition: service_healthy
+      image: dockerpie.querypie.com/chequer.io/querypie-app:8.4.1
+      ports:
+        - 3000:3000
+      environment:
+        - PORT=3000
+        - NODE_ENV=production
+        - APP_ENV=master
+        - API_URL=http://querypie-api:8080
+        - REDIS_HOST=redis-server
+        - REDIS_PORT=6379
+        - REDIS_PASSWORD=${redis_password}
+        - REDIS_EVENTKEY=master
+        - REDIS_DB=0
+        - TZ=Asia/Seoul
+      links:
+        - querypie-api
+
+    querypie-nginx:
+      image: dockerpie.querypie.com/chequer.io/nginx:1.19.8
+      volumes:
+        - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      ports:
+        - 80:80
+      links:
+        - querypie-app
+  ```
