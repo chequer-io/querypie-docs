@@ -482,7 +482,7 @@ imageCredentials:
 * VM은 최소 4Core, 16GB 이상을 권장합니다.  
 * docker 는 20.10.x 이상을 권장해드립니다.
 * 다음은 docker-compose.yml의 예제입니다. 다음 변수들을 환경에 맞게 조정해주십시오.
-* 참고 file을 에 올려둡니다. (예제 파일)[https://github.com/chequer-io/querypie-deployment/raw/master/docker-compose/docker-compose-example.zip]
+* 참고 file을 에 올려둡니다. [예제 파일](https://github.com/chequer-io/querypie-deployment/raw/master/docker-compose/docker-compose-example.zip)
 
   | Policy | 비고 |
   | :--- | :--- |
