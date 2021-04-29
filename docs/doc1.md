@@ -573,11 +573,15 @@ imageCredentials:
 <h3>10.1 Brief Architecture</h3>
 * Install (Deploy) 을 위한 간단한 구조를 설명합니다.
 
+  ![Public Zone](../static/img/ARiSA.png)
+
+
 <h3>10.2 Components</h3>
+
 | Policy | 비고 |
 | :--- | :--- |
-| Proxy Server| 클라이언트로 부터 연결을 받아 API서버와 통신하여 정책을 적용하여 DB 서버로 패킷을 전달합니다. |
-| Proxy Client | DB서버와 같은 Zone에 존재하며 Outboud 통신을 위한 Client입니다. |
+| Proxy Server (Proxy)| 클라이언트로 부터 연결을 받아 API서버와 통신하여 정책을 적용하여 DB 서버로 패킷을 전달합니다. |
+| Proxy Client (OTL)| DB서버와 같은 Zone에 존재하며 Outboud 통신을 위한 Client입니다. |
 
 <h3>10.3 Proxy Server Install</h3>
 * docker-compose 로 설치하는 것을 권장 드립니다.
@@ -599,8 +603,10 @@ imageCredentials:
         restart: unless-stopped
     ```
 
+* 환경변수 설명 
+  
   | Policy | 비고 |
-    | :--- | :--- |
+  | :--- | :--- |
   | ARISA_PORT_START| Proxy Server 의 Port Range의 Start |
   | ARISA_PORT_END | Proxy Server 의 Port Range의 End |
   | OTL_SERVER_PORT1 | 연결 수립을 위한 https 프로토콜을 위한 port |
@@ -612,7 +618,7 @@ imageCredentials:
 * docker-compose 로 설치하는 것을 권장 드립니다.
 
     ```yaml
-    version: "3.9"
+    version: "3"
 
     services:
       arisa:
