@@ -568,12 +568,6 @@ imageCredentials:
         - querypie-app
   ```
 
----
-id: doc1
-title: QueryPie Install Guide
-sidebar_label: QueryPie Install Guide
-slug: /
----
 <h2>10. QueryPie Proxy Server (aka. ARiSA)</h2>
 
 <h3>10.1 Brief Architecture</h3>
