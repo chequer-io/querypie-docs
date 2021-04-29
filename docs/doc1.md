@@ -567,3 +567,80 @@ imageCredentials:
       links:
         - querypie-app
   ```
+
+---
+id: doc1
+title: QueryPie Install Guide
+sidebar_label: QueryPie Install Guide
+slug: /
+---
+<h2>10. QueryPie Proxy Server (aka. ARiSA)</h2>
+
+<h3>10.1 Brief Architecture</h3>
+* Install (Deploy) 을 위한 간단한 구조를 설명합니다.
+
+<h3>10.2 Components</h3>
+| Policy | 비고 |
+| :--- | :--- |
+| Proxy Server| 클라이언트로 부터 연결을 받아 API서버와 통신하여 정책을 적용하여 DB 서버로 패킷을 전달합니다. |
+| Proxy Client | DB서버와 같은 Zone에 존재하며 Outboud 통신을 위한 Client입니다. |
+
+<h3>10.3 Proxy Server Install</h3>
+* docker-compose 로 설치하는 것을 권장 드립니다.
+
+    ```yaml
+    version: '3'
+    arisa:
+      image: dockerpie.querypie.com/chequer.io/querypie-app:alpha
+      environment:
+        - PORT=3000
+        - NODE_ENV=production
+        - APP_ENV=alpha
+        - ARISA_DEDICATED=true
+        - API_URL=https://api.querypie.com
+        - ARISA_PORT_START=40000
+        - ARISA_PORT_END=40200
+        - OTL_SERVER_PORT1=6000
+        - OTL_SERVER_PORT2=7000
+        restart: unless-stopped
+    ```
+
+  | Policy | 비고 |
+    | :--- | :--- |
+  | ARISA_PORT_START| Proxy Server 의 Port Range의 Start |
+  | ARISA_PORT_END | Proxy Server 의 Port Range의 End |
+  | OTL_SERVER_PORT1 | 연결 수립을 위한 https 프로토콜을 위한 port |
+  | OTL_SERVER_PORT2 | 데이터 전송을 위한 port |
+  | API_URL | querypie backend api server의 url |
+
+
+<h3>10.4 Proxy Client Install</h3>
+* docker-compose 로 설치하는 것을 권장 드립니다.
+
+    ```yaml
+    version: "3.9"
+
+    services:
+      arisa:
+        image: dockerpie.querypie.com/chequer.io/arisa-otl:alpha
+        environment:
+          - OTL_SERVER_HOST=alpha-proxy.querypie.com
+          - OTL_SERVER_PORT1=6000
+          - OTL_SERVER_PORT2=7000
+          - OTL_NETWORK_IDS=06f80a7b8c4fb747a
+          - OTL_NETWORK_CIDRS=172.10.0.0/16
+    ```
+
+  | Policy | 비고 |
+    | :--- | :--- |
+  | OTL_SERVER_HOST| Proxy Server의 주로를 가리킵니다. (10장 참고) |
+  | OTL_SERVER_PORT1 | 연결 수립을 위한 https 프로토콜을 위한 port |
+  | OTL_SERVER_PORT2 | 데이터 전송을 위한 port |
+  | OTL_NETWORK_IDS | DB서버가 위치하는 VPC의 ID를 지정합니다. |
+  | OTL_NETWORK_CIDRS | DB서버가 위치하는 CIDRS를 지정합니다. |
+
+* Proxy Server를 통하여 DB에 접근하는 경우 Proxy가 OTL Client를 찾아가는 방법은
+
+1. DB서버의 metadata에 저장된 NETWORK_ID
+2. DB서버의 CIDRS
+   의 순서로 찾아갑니다.
