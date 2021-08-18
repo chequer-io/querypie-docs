@@ -1,8 +1,8 @@
 ---
-id: doc1
+id: doc2
 title: Document DB 접속 Guide
 sidebar_label: Document DB 접속 Guide
-slug: /
+slug: /documentdb
 ---
 <h2>1. Document DB 접속 Guide</h2>
 
