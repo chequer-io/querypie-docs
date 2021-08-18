@@ -46,13 +46,12 @@ document db는 기본적으로 private 영역에 생성이 됩니다.
 
   ![Public Zone](../static/img/mongo_new.png)
 
-  
-  
+  * TLS 의 경우 SSL / SSH Setting 에서 1.1 에서 만든 인증서를 선택합니다. (TLS 가 Disable 인 경우 Skip 합니다.)
 
-  
+  ![Public Zone](../static/img/ssl_ssh_setting.png)
 
+<h3>1.3 Connection  정보 등록 - SSH 터널링 이용</h3>
 
-  
-    
+   TODO : 작성하기
   
   
