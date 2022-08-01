@@ -50,4 +50,4 @@ jobs:
           git config --global user.email "actions@gihub.com"
           git config --global user.name "gh-actions"
           npm install
-          npx docusaurus deploy
+          npm run deploy
