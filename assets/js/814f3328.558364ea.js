@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkquerypie_docs=self.webpackChunkquerypie_docs||[]).push([[535],{5641:function(e){e.exports=JSON.parse('{"title":"Recent posts","items":[{"title":"Welcome","permalink":"/querypie-docs/blog/welcome"},{"title":"Hello","permalink":"/querypie-docs/blog/hello-world"},{"title":"Hola","permalink":"/querypie-docs/blog/hola"}]}')}}]);

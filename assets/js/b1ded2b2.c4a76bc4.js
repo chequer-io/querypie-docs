@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkquerypie_docs=self.webpackChunkquerypie_docs||[]).push([[945],{1502:function(e){e.exports=JSON.parse('{"label":"facebook","permalink":"/querypie-docs/blog/tags/facebook","allTagsPath":"/querypie-docs/blog/tags","count":1}')}}]);

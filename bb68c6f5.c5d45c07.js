@@ -1,1 +1,0 @@
-(window.webpackJsonp=window.webpackJsonp||[]).push([[20],{77:function(s){s.exports=JSON.parse('{"allTagsPath":"/querypie-docs/blog/tags","slug":"docusaurus","name":"docusaurus","count":3,"permalink":"/querypie-docs/blog/tags/docusaurus"}')}}]);

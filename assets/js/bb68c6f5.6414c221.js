@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkquerypie_docs=self.webpackChunkquerypie_docs||[]).push([[338],{6308:function(s){s.exports=JSON.parse('{"label":"docusaurus","permalink":"/querypie-docs/blog/tags/docusaurus","allTagsPath":"/querypie-docs/blog/tags","count":3}')}}]);

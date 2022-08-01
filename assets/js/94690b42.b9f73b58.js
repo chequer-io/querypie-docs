@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkquerypie_docs=self.webpackChunkquerypie_docs||[]).push([[822],{3983:function(e){e.exports=JSON.parse('{"permalink":"/querypie-docs/blog/tags/docusaurus","page":1,"postsPerPage":10,"totalPages":1,"totalCount":3,"blogDescription":"Blog","blogTitle":"Blog"}')}}]);
