@@ -1,6 +1,11 @@
 # querypie-docs
 QueryPie 제품의 Docs를 관리하는 Git Repository입니다.
 
+# 오픈 전 다음 파일 TODO 보고 로직이나 값 고쳐서 나가야 함
+- src/middleware.ts
+- scripts/generate-sitemap/index.js
+- src/app/[lang]/layout.tsx
+
 ## 기술 스택
 - Next.js 15
 - React.js 19
