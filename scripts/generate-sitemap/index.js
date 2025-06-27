@@ -124,5 +124,6 @@ function main() {
   console.log(`Total URLs: ${urls.length}`);
 }
 
+// TODO: docs 에 맞게 고친 후 주석 풀어야 함.
 // Run the script
-main();
+// main();
