@@ -1,0 +1,47 @@
+{
+  "name": "querypie-docs",
+  "private": true,
+  "description": "QueryPie Docs",
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "postbuild": "npm run generate-pagefind && npm run generate-sitemap",
+    "start": "next start",
+    "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "format": "npx prettier --write .",
+    "generate-pagefind": "pagefind --site .next/server/app --output-path public/_pagefind",
+    "generate-sitemap": "node scripts/generate-sitemap/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chequer-io/querypie-docs.git"
+  },
+  "author": "QueryPie",
+  "bugs": {
+    "url": "https://github.com/chequer-io/querypie-docs/issues"
+  },
+  "homepage": "https://github.com/chequer-io/querypie-docs#readme",
+  "dependencies": {
+    "@next/third-parties": "^15.3.4",
+    "@theguild/remark-mermaid": "^0.3.0",
+    "next": "^15.3.4",
+    "nextra": "^4.2.17",
+    "nextra-theme-docs": "^4.2.17",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/js": "^9.29.0",
+    "@types/node": "^24.0.4",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "eslint": "^9.29.0",
+    "eslint-config-next": "^15.3.4",
+    "eslint-plugin-unused-imports": "^4.1.4",
+    "pagefind": "^1.3.0",
+    "prettier": "^3.6.1",
+    "typescript": "^5.8.3"
+  }
+}

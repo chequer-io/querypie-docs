@@ -1,0 +1,49 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      BRANCH:
+        description: "배포할 브랜치"
+        required: true
+        default: "main"
+        type: "string"
+      TARGET_ENV:
+        description: "타겟 환경"
+        required: true
+        default: "production"
+        type: "choice"
+        options:
+          - "production"
+          - "preview"
+
+defaults:
+  run:
+    working-directory: scripts/deploy
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci --silent
+
+      - name: Create .env file
+        run: |
+          echo "VERCEL_TOKEN=${{ secrets.VERCEL_TOKEN }}" >> .env
+          echo "BRANCH=${{ inputs.BRANCH }}" >> .env
+          echo "TARGET_ENV=${{ inputs.TARGET_ENV }}" >> .env
+
+      - name: Cat .env file
+        run: cat .env
+
+      - name: Run Deploy Script
+        run: npm run deploy
