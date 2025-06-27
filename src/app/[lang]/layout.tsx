@@ -29,9 +29,9 @@ export const metadata = (() => {
 
   return {
     ...defaultMetadata,
-    metadataBase: new URL('https://aihub-docs.app.querypie.com'),
+    metadataBase: new URL('https://querypie-docs.vercel.app'),
     twitter: {
-      site: 'https://aihub-docs.app.querypie.com',
+      site: 'https://querypie-docs.vercel.app',
     },
     other: {
       'msapplication-TileImage': '/icon-256.png',
