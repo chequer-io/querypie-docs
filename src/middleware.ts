@@ -13,6 +13,8 @@ export const COMPANY_IPS = [
   '165.85.47.211', // Global Protect
   '165.225.228.0/23', // Zscaler
   '167.103.96.0/23', // Zscaler
+  '167.103.0.0/16', // Zscaler 일본 포함 다른나라
+  '147.161.192.0/21', // Zscaler 오사카
 ];
 
 /**
