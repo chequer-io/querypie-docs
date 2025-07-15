@@ -5,12 +5,6 @@ import { NextRequest, NextResponse } from 'next/server';
 export const COMPANY_IPS = [
   '::1', // 로컬 ip6
   '127.0.0.1', // 로컬 ip4
-  '13.209.86.91', // Global Protect
-  '13.209.133.130', // Global Protect
-  '114.141.122.75', // Global Protect
-  '114.141.122.203', // Global Protect
-  '165.85.47.212', // Global Protect
-  '165.85.47.211', // Global Protect
   '165.225.228.0/23', // Zscaler
   '167.103.96.0/23', // Zscaler
   '167.103.0.0/16', // Zscaler 일본 포함 다른나라
