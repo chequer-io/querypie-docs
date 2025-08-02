@@ -44,7 +44,7 @@ def backtick_curly_braces(text):
         str: The processed text with curly braces content wrapped in backticks.
     """
     # \u2026 is the ellipsis character, `...` which is often used in Confluence
-    pattern = r'(\{\{?[\w\s\-\|\u2026]{1,60}\}\}?)'
+    pattern = r'(\{\{?[\w\s\-\_\.\|\:\u2026]{1,60}\}\}?)'
     return re.sub(pattern, r'`\1`', text)
 
 
@@ -214,6 +214,13 @@ class SingleLineParser:
             # For now, I will not handle the style prop and <span>.
             for child in node.children:
                 self.convert_recursively(child)
+        elif node.name in ['u']:
+            if node.parent.name != 'a':  # CORRECTION: Use plain style in anchor text.
+                self.markdown_lines.append("<u>")
+            for child in node.children:
+                self.convert_recursively(child)
+            if node.parent.name != 'a':
+                self.markdown_lines.append("</u>")
         elif node.name in ['ac:structured-macro']:
             """
 <ac:structured-macro ac:name="status" ac:schema-version="1" ac:macro-id="a935cf67-ed54-4b6b-aafd-63cbebe654e1">
@@ -322,6 +329,8 @@ class SingleLineParser:
             else:
                 # Process child nodes if the datetime attribute is not present
                 logging.warning(f"Failed to get datetime attribute in {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
+        elif node.name in ['ac:image']:
+            self.convert_inline_image(node)
         else:
             logging.warning(f"SingleLineParser: Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
             self.markdown_lines.append(f'[{node.name}]')
@@ -331,6 +340,46 @@ class SingleLineParser:
         if self._debug_markdown:
             self.markdown_lines.append(f'</{node.name}>')
         return
+
+    def convert_inline_image(self, node):
+        """
+        Process Confluence-specific image tags <ac:image> and convert them to Markdown format.
+
+        Example XHTML:
+        <ac:image ac:align="center" ac:layout="center" ac:original-height="668" ac:original-width="1024"
+                 ac:custom-width="true" ac:alt="image-20240806-095511.png" ac:width="760">
+            <ri:attachment ri:filename="image-20240806-095511.png" ri:version-at-save="1"/>
+            <ac:caption><p>How QueryPie Works</p></ac:caption>
+            <ac:adf-mark key="border" size="1" color="#091e4224"/>
+        </ac:image>
+
+        Converts to Markdown:
+            ![image-20240806-095511.png](image-20240806-095511.png)
+        """
+        logging.debug(f"Processing Confluence image: {node}")
+
+        # Extract image attributes
+        align = node.get('align', 'center')
+        alt_text = node.get('alt', '')
+
+        # Find the attachment filename
+        image_filename = ''
+        attachment = node.find('ri:attachment')
+        if attachment:
+            image_filename = attachment.get('filename', '')
+            if not image_filename:
+                # Log warning if the filename is still empty
+                logging.warning("'filename' attribute is empty, check XML namespace handling")
+        else:
+            logging.warning(f'No attachment found in <ac:image> from {ancestors(node)}, no filename to use.')
+
+        # Create a Markdown image with alt text and filename
+        if not alt_text and image_filename:
+            alt_text = image_filename
+
+        # Add the image in Markdown format
+        # self.markdown_lines.append(f"![{alt_text}]({image_filename})")
+        self.markdown_lines.append(f"![{alt_text}]()")  # TODO(JK): Fix image link
 
 
 class MultiLineParser:
@@ -354,22 +403,24 @@ class MultiLineParser:
             return
 
         logging.debug(f"MultiLineParser: type={type(node).__name__}, name={node.name}, value={repr(node.text)}")
-        name_attr = node.get('name', '(none)')
+        attr_name = node.get('name', '(none)')
         if node.name in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
             # Headings can exist in a <Callout> block.
             self.markdown_lines.append(SingleLineParser(node).as_markdown)
             self.markdown_lines.append('\n')
-        elif node.name in ['ac:structured-macro'] and name_attr in ['tip', 'info', 'note', 'warning']:
+        elif node.name in ['ac:structured-macro'] and attr_name in ['tip', 'info', 'note', 'warning']:
             for child in node.children:
                 self.convert_recursively(child)
+        elif node.name in ['ac:structured-macro'] and attr_name in ['code']:
+            self.convert_structured_macro_code(node)
+        elif node.name in ['ac:structured-macro'] and attr_name in ['expand']:
+            self.convert_structured_macro_expand(node)
         elif node.name in [
             'ac:rich-text-body',  # Child of <ac:structured-macro name="panel">
             'ac:adf-content',  # Child of <ac:adf-extension>
         ]:
             for child in node.children:
                 self.convert_recursively(child)
-        elif node.name in ['ac:structured-macro'] and node.get('name', '') in ['code']:
-            self.convert_structured_macro_code(node)
         elif node.name in ['p']:
             for child in node.children:
                 # self.markdown_lines.append(f"({child.name if child.name else 'NavigableString'})")
@@ -386,6 +437,13 @@ class MultiLineParser:
             self.markdown_lines.append(SingleLineParser(node).as_markdown)
         elif node.name in ['hr']:
             self.markdown_lines.append(f'---\n')
+        elif node.name in ['blockquote']:
+            markdown = []
+            for child in node.children:
+                markdown.extend(MultiLineParser(child).as_markdown)
+            lines = ''.join(markdown).splitlines()
+            for to_quote in lines:
+                self.markdown_lines.append(f'> {to_quote}')
         else:
             logging.warning(f"MultiLineParser: Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
             self.markdown_lines.append(f'[{node.name}]')
@@ -493,7 +551,7 @@ class MultiLineParser:
         cdata = "TODO(JK): Handle code macro content extraction"
 
         # Look for language parameter
-        language_param = node.find('parameter', {'name': 'language'})
+        language_param = node.find('ac:parameter', {'name': 'language'})
         if language_param:
             language = language_param.get_text()
 
@@ -513,6 +571,30 @@ class MultiLineParser:
         self.markdown_lines.append("\n")
         self.markdown_lines.append("```")
         self.markdown_lines.append("\n")
+
+    def convert_structured_macro_expand(self, node):
+        """
+        <ac:structured-macro ac:name="expand" ac:schema-version="1" ac:macro-id="1df48224-102c-464b-931c-e5e53abcb781">
+            <ac:parameter ac:name="title">generate_kubepie_sa.sh 스크립트 컨텐츠</ac:parameter>
+            <ac:rich-text-body>
+            blah... blah...
+            </ac:rich-text-body>
+        </ac:structured-macro><ul>
+        """
+        self.markdown_lines.append(f"<details>\n")
+        # Find title parameter
+        title = "(Untitled)"
+        title_param = node.find('ac:parameter', {'name': 'title'})
+        if title_param:
+            title = title_param.get_text()
+        self.markdown_lines.append(f'<summary>{title}</summary>\n')
+
+        # Look for code content in the CDATA section
+        rich_text_body = node.find('ac:rich-text-body')
+        if rich_text_body:
+            self.markdown_lines.extend(MultiLineParser(rich_text_body).as_markdown)
+
+        self.markdown_lines.append(f"</details>\n")
 
 
 class TableToNativeMarkdown:
@@ -912,7 +994,7 @@ class AdfExtensionToCallout:
             self.markdown_lines.append('</Callout>')
             self.markdown_lines.append('\n')
         elif node.name in ['ac:adf-fallback']:
-            pass # Ignore <ac:adf-fallback>
+            pass  # Ignore <ac:adf-fallback>
         else:
             logging.warning(f"AdfExtensionToCallout: Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
             self.markdown_lines.append(f'[{node.name}]')
@@ -1016,6 +1098,8 @@ class ConfluenceToMarkdown:
             self.markdown_lines.append(paragraph)
         elif node.name in ['ul', 'ol']:
             self.markdown_lines.append(''.join(MultiLineParser(node).as_markdown))
+        elif node.name in ['blockquote']:
+            self.markdown_lines.append(''.join(MultiLineParser(node).as_markdown))
         elif node.name == 'table':
             native_markdown = TableToNativeMarkdown(node)
             if native_markdown.applicable:
@@ -1027,10 +1111,21 @@ class ConfluenceToMarkdown:
             attr_name = node.get('name', '')
             if StructuredMacroToCallout(node).applicable:
                 self.markdown_lines.append(''.join(StructuredMacroToCallout(node).as_markdown))
-            elif attr_name in ['code']:
+            elif attr_name in ['code', 'expand']:
                 self.markdown_lines.append(''.join(MultiLineParser(node).as_markdown))
+            elif attr_name in ['toc']:
+                # Table of contents macro, we can skip it, as toc is provided by the Markdown renderer by default
+                logging.debug("Skipping TOC macro")
+            elif attr_name in ['children']:
+                self.markdown_lines.append(f'(Unsupported xhtml node: &lt;ac:structured-macro name="children"&gt;)')
+                pass
             else:
-                self.handle_structured_macro(node)
+                if self._debug_markdown:
+                    self.markdown_lines.append(f'{print_node_with_properties(node)}')
+                # For other macros, we can just log or skip
+                logging.warning(f"Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
+                for child in node.children:
+                    self.process_node(child)
         elif node.name == 'ac:adf-extension':
             if AdfExtensionToCallout(node).applicable:
                 self.markdown_lines.append(''.join(AdfExtensionToCallout(node).as_markdown))
@@ -1045,22 +1140,6 @@ class ConfluenceToMarkdown:
         else:
             logging.warning(f"Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
             # Default behavior for other tags: process children
-            for child in node.children:
-                self.process_node(child)
-
-    def handle_structured_macro(self, node):
-        macro_name = node.get('name', '')
-        if macro_name in ['toc']:
-            # Table of contents macro, we can skip it, as toc is provided by the Markdown renderer by default
-            logging.debug("Skipping TOC macro")
-        elif macro_name in ['children']:
-            self.markdown_lines.append(f'(Unsupported xhtml node: &lt;ac:structured-macro name="children"&gt;)')
-            pass
-        else:
-            if self._debug_markdown:
-                self.markdown_lines.append(f'{print_node_with_properties(node)}')
-            # For other macros, we can just log or skip
-            logging.warning(f"Unhandled macro: {macro_name}, processing children")
             for child in node.children:
                 self.process_node(child)
 
