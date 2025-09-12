@@ -19,15 +19,6 @@ export const languages: LanguageOption[] = [
 // Constants
 const ONE_YEAR = 365 * 24 * 60 * 60 * 1000;
 
-// Utility functions
-export const getCurrentLanguage = (currentLang: string): LanguageOption => {
-  return languages.find(lang => lang.code === currentLang) || languages[0];
-};
-
-export const getCurrentPagePath = (pathname: string, currentLang: string): string => {
-  return pathname.replace(`/${currentLang}`, '') || '/';
-};
-
 // Language change handler with cookie support
 export const handleLanguageChange = (lang: string, currentLang: string, pathname: string): void => {
   // Set cookie for language preference
@@ -39,7 +30,7 @@ export const handleLanguageChange = (lang: string, currentLang: string, pathname
   location.href = addBasePath(newPath);
 };
 
-export const generateLanguageSelectorHTML = (currentLang: string, pathname: string): string => {
+export const generateLanguageSelectorHTML = (currentLang: string): string => {
   const languageButtons = languages.map(language => {
     const isActive = language.code === currentLang;
     
@@ -197,7 +188,7 @@ export default function LanguageSelector({ currentLang }: LanguageSelectorProps)
     const addLanguageSelector = () => {
       const tocContainer = document.querySelector('nav.nextra-toc');
       if (tocContainer && !tocContainer.querySelector('.language-selector-toc')) {
-        const html = generateLanguageSelectorHTML(currentLang, window.location.pathname);
+        const html = generateLanguageSelectorHTML(currentLang);
         tocContainer.insertAdjacentHTML('afterbegin', html);
         
         // Add event listeners to language buttons
