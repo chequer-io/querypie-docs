@@ -990,11 +990,41 @@ class MultiLineParser:
         indent = " " * 4 * (len(self.list_stack) - 1)
         if list_type == 'ul':
             prefix = f"{indent}* "
+            prefix_for_children = f"{indent}  "
         else:
             prefix = f"{indent}{counter}. "
+            prefix_for_children = f"{indent}  "
 
-        text = SingleLineParser(node).as_markdown
-        self.markdown_lines.append(f'{prefix}{text}\n')
+        # Process each child element separately to handle mixed content
+        li_itself = []
+        child_markdown = []
+        for child in node.children:
+            if isinstance(child, NavigableString):
+                if child.text.strip():  # Only process non-empty text nodes
+                    li_itself.append(SingleLineParser(child).as_markdown)
+            elif child.name == 'p':
+                # Process paragraph content
+                if len(li_itself) > 0:
+                    li_itself.append('<br/>')
+                li_itself.append(SingleLineParser(child).as_markdown)
+            elif child.name == 'ac:image':
+                # Process image separately using MultiLineParser
+                image_markdown = MultiLineParser(child).as_markdown
+                child_markdown.extend(image_markdown)
+            elif child.name in ['ul', 'ol']:
+                pass  # Will be processed later in this method
+            else:
+                child_markdown.extend(f'<Unexpected node name={child.name}/>')
+
+        logging.debug(f'li_itself={li_itself}')
+        logging.debug(f'child_markdown={child_markdown}')
+
+        itself = ' '.join(li_itself)
+        self.markdown_lines.append(f'{prefix}{itself}\n')
+        if len(child_markdown) > 0:
+            for i in range(len(child_markdown)):
+                child_markdown[i] = prefix_for_children + child_markdown[i]
+            self.markdown_lines.extend(child_markdown)
 
         # Handle nested lists
         for child in node.children:
