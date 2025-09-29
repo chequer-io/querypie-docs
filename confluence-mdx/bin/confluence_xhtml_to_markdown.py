@@ -126,11 +126,9 @@ class Attachment:
             rehype_attr.append('class="mx-auto block"')
 
         if self.filename.endswith('.png'):
-            if rehype_attr:
-                attr_str = ' '.join(rehype_attr)
-                return f'![{caption}]({self.output_dir}/{self.filename}){{{attr_str}}}'
-            else:
-                return f'![{caption}]({self.output_dir}/{self.filename})'
+            # TODO(JK): For now, do not use rehype-attr for images.
+            # Otherwise, `npm run build` fails with 'Could not parse expression with acorn'
+            return f'![{caption}]({self.output_dir}/{self.filename})'
         else:
             return f'[{caption}]({self.output_dir}/{self.filename})'
 
