@@ -3,7 +3,24 @@ import {NextRequest, NextResponse} from 'next/server';
 import {middlewareLogger} from './lib/logger';
 import {detectUserLanguage} from './lib/detect-user-language';
 
+// URIs that should skip Nextra middleware and be handled by route handlers
+const SKIP_MIDDLEWARE_URIS = new Map<string, string>([
+  ['/robots.txt', 'Handled by robots.txt route handler'],
+  // Add more URIs here as needed, for example,
+  // ['/manifest.json', 'Handled by manifest.json route handler'],
+  // ['/sitemap.xml', 'Handled by sitemap.xml route handler'],
+]);
+
 export async function middleware(request: NextRequest) {
+  // Skip Nextra middleware for URIs that should be handled by route handlers
+  if (SKIP_MIDDLEWARE_URIS.has(request.nextUrl.pathname)) {
+    middlewareLogger.debug('Skipping Nextra middleware', {
+      pathname: request.nextUrl.pathname,
+      reason: SKIP_MIDDLEWARE_URIS.get(request.nextUrl.pathname),
+    });
+    return NextResponse.next();
+  }
+
   middlewareLogger.debug('Middleware request', {
     pathname: request.nextUrl.pathname,
     method: request.method
@@ -23,20 +40,6 @@ export async function middleware(request: NextRequest) {
     });
 
     return NextResponse.redirect(redirectUrl);
-  }
-
-  if (request.nextUrl.pathname === '/robots.txt') {
-    middlewareLogger.debug('Handling robots.txt request');
-    if (process.env.DEPLOYMENT_ENV === 'production') {
-      return new NextResponse(`User-agent: *
-Allow: /
-Sitemap: https://docs.querypie.com/sitemap.xml
-`);
-    } else {
-      return new NextResponse(`User-agent: *
-Disallow: /
-`);
-    }
   }
 
   middlewareLogger.debug('Handling with Nextra middleware');
