@@ -13,13 +13,13 @@ import { LastUpdated } from '@/components/last-updated';
 
 const defaultMetadata: Metadata = {
   title: {
-    default: 'QueryPi Docs',
-    template: '%s - QueryPie Docs',
+    default: 'QueryPie ACP',
+    template: '%s - QueryPie ACP',
   },
-  description: 'QueryPie Docs',
-  applicationName: 'QueryPie Docs',
+  description: 'QueryPie ACP',
+  applicationName: 'QueryPie ACP',
   appleWebApp: {
-    title: 'QueryPie Docs',
+    title: 'QueryPie ACP',
   },
   other: {
     'msapplication-TileImage': '/icon-256.png',
@@ -75,7 +75,7 @@ export default async function RootLayout({ children, params }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
             <img src="/icon-32.png" alt="QueryPie Logo" width={18} height={18} />
             <div>
-              <b>QueryPie</b> <span style={{ opacity: '60%' }}>Docs</span>
+              <b>QueryPie</b> <span style={{ opacity: '60%' }}>ACP</span>
             </div>
           </div>
         </div>
