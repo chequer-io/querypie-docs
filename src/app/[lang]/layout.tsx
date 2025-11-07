@@ -5,11 +5,9 @@ import { getPageMap } from 'nextra/page-map';
 import { GoogleAnalytics } from '@next/third-parties/google';
 import '../globals.css';
 import { Metadata } from 'next';
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
 import React from 'react';
 import { LastUpdated } from '@/components/last-updated';
+import LanguageSelector2 from "@/components/language-selector2";
 
 const defaultMetadata: Metadata = {
   title: {
@@ -43,31 +41,9 @@ export const metadata: Metadata =
         },
       };
 
-// Extract layout information from Front Matter of an MDX file
-function getLayoutFromMdx(mdxPath: string[], lang: string): string {
-  const normalizedMdxPath = mdxPath && mdxPath.length > 0 ? mdxPath : ['index'];
-
-  try {
-    const contentPath = path.join(process.cwd(), 'src', 'content', lang, ...normalizedMdxPath) + '.mdx';
-
-    if (!fs.existsSync(contentPath)) {
-      return 'default';
-    }
-
-    const fileContent = fs.readFileSync(contentPath, 'utf-8');
-    const { data } = matter(fileContent);
-
-    return data.layout || 'default';
-  } catch (error) {
-    console.warn(`Failed to parse frontmatter for ${normalizedMdxPath.join('/')}:`, error);
-    return 'default';
-  }
-}
-
 export default async function RootLayout({ children, params }) {
-  const { lang, mdxPath } = await params;
+  const { lang, mdxPath: _mdxPath } = await params;
 
-  const layoutName = getLayoutFromMdx(mdxPath, lang);
   const navbar = (
     <Navbar
       logo={
@@ -110,11 +86,11 @@ export default async function RootLayout({ children, params }) {
           ]}
           sidebar={{ defaultMenuCollapseLevel: 1 }}
           toc={{
-            // TODO(JK): For debugging only. Remote this later.
-            extraContent: (
-              <div>
-                <small>layout={layoutName}</small>
-              </div>
+            title: (
+              <>
+                <LanguageSelector2/>
+                <p>On This Page</p>
+              </>
             ),
           }}
           lastUpdated={<LastUpdated locale={lang} />}
