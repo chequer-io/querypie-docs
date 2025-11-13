@@ -1,9 +1,7 @@
 import nextra from 'nextra';
-import remarkEmoji from 'remark-emoji';
-import remarkGfm from 'remark-gfm';
-import rehypeAttrs from 'rehype-attr';
 
 // Set up Nextra with its configuration
+// Configure mdxOptions as a function to load plugins at runtime for Turbopack compatibility
 const withNextra = nextra({
   latex: true,
   search: {
@@ -16,13 +14,21 @@ const withNextra = nextra({
   // Refer to this: https://nextra.site/docs/advanced/table
   whiteListTagsStyling: ['table', 'thead', 'tbody', 'tr', 'th', 'td'],
 
-  // Add remark plugins for emoji and GitHub Flavored Markdown support
-  mdxOptions: {
-    remarkPlugins: [remarkEmoji, remarkGfm],
-    rehypePlugins: [
-      [rehypeAttrs, { properties: ['width', 'class'] }]
-    ],
-  },
+  // Configure mdxOptions with plugins loaded via require for Turbopack compatibility
+  // Using require instead of import keeps the config more serializable
+  mdxOptions: (() => {
+    // Load plugins using require to avoid top-level imports
+    const remarkGfm = require('remark-gfm');
+    const rehypeAttrs = require('rehype-attr');
+
+    return {
+      // Add remark plugins for GitHub Flavored Markdown support
+      remarkPlugins: [remarkGfm.default || remarkGfm],
+      rehypePlugins: [
+        [rehypeAttrs.default || rehypeAttrs, { properties: ['width', 'class'] }]
+      ]
+    };
+  })()
 });
 
 // Export the final Next.js config with Nextra included
