@@ -459,10 +459,10 @@ def convert_mdx_to_skeleton(input_path: Path) -> Path:
     return output_path
 
 
-def process_directory(directory: Path, recursive: bool = False) -> int:
+def process_directory(directory: Path, recursive: bool = False) -> Tuple[int, int]:
     """
     Process all .mdx files in a directory.
-    Returns number of successfully processed files.
+    Returns tuple of (success_count, error_count).
     """
     if not directory.exists():
         raise FileNotFoundError(f"Directory not found: {directory}")
@@ -483,28 +483,135 @@ def process_directory(directory: Path, recursive: bool = False) -> int:
     mdx_files = [f for f in mdx_files if not f.name.endswith('.skel.mdx')]
     
     if not mdx_files:
-        print(f"No .mdx files found in {directory}", file=sys.stderr)
-        return 0
-    
-    print(f"Found {len(mdx_files)} .mdx file(s) to process...")
+        return (0, 0)
     
     for mdx_file in mdx_files:
         try:
-            output_path = convert_mdx_to_skeleton(mdx_file)
-            print(f"Successfully created: {output_path}")
+            convert_mdx_to_skeleton(mdx_file)
             success_count += 1
         except ValueError as e:
             # Skip .skel.mdx files silently
             if '.skel.mdx' in str(e):
                 continue
-            print(f"Error processing {mdx_file}: {e}", file=sys.stderr)
+            print(f"{mdx_file}: {e}", file=sys.stderr)
             error_count += 1
         except Exception as e:
-            print(f"Error processing {mdx_file}: {e}", file=sys.stderr)
+            print(f"{mdx_file}: {e}", file=sys.stderr)
             error_count += 1
     
-    print(f"\nProcessed: {success_count} successful, {error_count} errors")
-    return success_count
+    return (success_count, error_count)
+
+
+def get_mdx_files(directory: Path) -> set[str]:
+    """
+    Get all .mdx files in a directory (recursively), excluding .skel.mdx files.
+    Returns a set of relative paths (as strings) from the directory root.
+    """
+    if not directory.exists() or not directory.is_dir():
+        return set()
+    
+    mdx_files = list(directory.rglob('*.mdx'))
+    # Filter out .skel.mdx files
+    mdx_files = [f for f in mdx_files if not f.name.endswith('.skel.mdx')]
+    
+    # Convert to relative paths from directory root
+    relative_paths = set()
+    for mdx_file in mdx_files:
+        try:
+            rel_path = mdx_file.relative_to(directory)
+            relative_paths.add(str(rel_path))
+        except ValueError:
+            # If relative_to fails, use absolute path
+            relative_paths.add(str(mdx_file))
+    
+    return relative_paths
+
+
+def compare_files(verbose: bool = False):
+    """
+    Compare .mdx files across target/en, target/ja, and target/ko directories.
+    Outputs comparison results to stdout.
+    
+    Args:
+        verbose: If False, skip files that exist in all three languages.
+                 If True, output all files.
+    """
+    base_dir = Path('target')
+    dirs = {
+        'ko': base_dir / 'ko',
+        'en': base_dir / 'en',
+        'ja': base_dir / 'ja',
+    }
+    
+    # Get file lists for each directory
+    file_sets = {}
+    for lang, dir_path in dirs.items():
+        file_sets[lang] = get_mdx_files(dir_path)
+    
+    # Get all unique file paths (union of all three sets)
+    all_files = file_sets['ko'] | file_sets['en'] | file_sets['ja']
+    
+    # Sort alphabetically
+    sorted_files = sorted(all_files)
+    
+    # Output comparison results
+    for file_path in sorted_files:
+        # Check existence in each directory
+        ko_exists = file_path in file_sets['ko']
+        en_exists = file_path in file_sets['en']
+        ja_exists = file_path in file_sets['ja']
+        
+        # Skip if all three languages exist and not verbose
+        if not verbose and ko_exists and en_exists and ja_exists:
+            continue
+        
+        # Format output: /path/to/file.mdx ko en ja
+        ko_status = 'ko' if ko_exists else '-'
+        en_status = 'en' if en_exists else '-'
+        ja_status = 'ja' if ja_exists else '-'
+        
+        # Ensure path starts with /
+        output_path = file_path if file_path.startswith('/') else f'/{file_path}'
+        print(f"{output_path} {ko_status} {en_status} {ja_status}")
+
+
+def process_directories_recursive(directories: List[Path]) -> int:
+    """
+    Process multiple directories recursively.
+    If directories list is empty, uses default directories (target/en, target/ja, target/ko).
+    Returns exit code (0 for success).
+    """
+    if len(directories) == 0:
+        # No directories specified, use defaults
+        default_dirs = [
+            Path('target/en'),
+            Path('target/ja'),
+            Path('target/ko')
+        ]
+        directories = default_dirs
+    
+    total_success = 0
+    total_errors = 0
+    
+    for directory in directories:
+        if not directory.exists():
+            print(f"Warning: Directory not found: {directory}", file=sys.stderr)
+            continue
+        if not directory.is_dir():
+            print(f"Warning: Path is not a directory: {directory}", file=sys.stderr)
+            continue
+        success_count, error_count = process_directory(directory, recursive=True)
+        total_success += success_count
+        total_errors += error_count
+        
+        # Print statistics for this directory
+        print(f"{directory}: {success_count} successful, {error_count} errors")
+    
+    # Print overall summary statistics
+    if len(directories) > 1:
+        print(f"Total: {total_success} successful, {total_errors} errors")
+    
+    return 0
 
 
 def main():
@@ -514,31 +621,50 @@ def main():
     parser.add_argument(
         'input_path',
         type=Path,
+        nargs='?',
         help='Path to input MDX file or directory (if -r is specified)'
     )
     parser.add_argument(
         '-r', '--recursive',
+        nargs='*',
+        type=Path,
+        metavar='DIR',
+        help='Process directory(ies) recursively. If no directories specified, defaults to target/en, target/ja, target/ko'
+    )
+    parser.add_argument(
+        '--compare',
         action='store_true',
-        help='Process directory recursively (treat input_path as directory)'
+        help='Compare .mdx files across target/en, target/ja, and target/ko directories'
+    )
+    parser.add_argument(
+        '--verbose',
+        action='store_true',
+        help='When used with --compare, output all files including those that exist in all three languages'
     )
     
     args = parser.parse_args()
     
     try:
-        if args.recursive:
-            # Treat input_path as directory
-            process_directory(args.input_path, recursive=True)
+        if args.compare:
+            # Compare mode
+            compare_files(verbose=args.verbose)
             return 0
-        else:
-            # Check if input_path is a directory or file
+        elif args.recursive is not None:
+            # Recursive mode: process directories
+            return process_directories_recursive(args.recursive)
+        elif args.input_path:
+            # Single file mode
             if args.input_path.is_dir():
                 print("Error: Input path is a directory. Use -r option for directory processing.", file=sys.stderr)
                 return 1
             
-            # Treat as single file
             output_path = convert_mdx_to_skeleton(args.input_path)
             print(f"Successfully created: {output_path}")
             return 0
+        else:
+            # No arguments provided
+            parser.print_help()
+            return 1
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         import traceback
