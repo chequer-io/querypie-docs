@@ -96,7 +96,7 @@ def extract_urls(text: str) -> Tuple[str, List[ProtectedSection]]:
     # Pattern to match URLs in Markdown links and images
     # Match [text](url) or ![alt](url)
     # For images, we preserve the URL but will process alt text later
-    pattern = r'(!?\[[^]]*]\\()([^)]+)(\))'
+    pattern = r'(!?\[[^\]]*\]\()([^)]+)(\))'
 
     def replace_url(match):
         nonlocal placeholder_counter
@@ -475,10 +475,81 @@ def process_markdown_line(line: str) -> str:
     return replace_text_in_content(line)
 
 
+def is_sentence_ending_punctuation(text: str) -> bool:
+    """
+    Check if text is a sentence-ending punctuation mark (optionally with trailing whitespace).
+    
+    Args:
+        text: Text to check
+        
+    Returns:
+        True if text matches sentence-ending punctuation pattern
+    """
+    return bool(re.match(r'^[.!?。！？]\s*$', text))
+
+
+def contains_text_characters(text: str) -> bool:
+    """
+    Check if text contains any text characters (Korean, Japanese, English, numbers).
+    
+    Args:
+        text: Text to check
+        
+    Returns:
+        True if text contains any text characters
+    """
+    return bool(re.search(r'[가-힣\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAFa-zA-Z0-9]', text))
+
+
+def extract_leading_whitespace(text: str) -> str:
+    """
+    Extract leading whitespace from text.
+    
+    Args:
+        text: Text to extract whitespace from
+        
+    Returns:
+        Leading whitespace string, empty string if none
+    """
+    match = re.match(r'^(\s*)', text)
+    return match.group(1) if match else ''
+
+
+def process_punctuation_with_space(
+    punctuation_with_space: str,
+    is_last_punctuation: bool
+) -> str:
+    """
+    Process punctuation with trailing space, removing space if this is the last punctuation.
+    
+    Args:
+        punctuation_with_space: Punctuation mark with trailing space (e.g., '. ')
+        is_last_punctuation: True if this is the last punctuation in the text
+        
+    Returns:
+        Processed punctuation (with or without trailing space)
+    """
+    # Extract punctuation and trailing space separately
+    punctuation_match = re.match(r'^([.!?。！？])(\s*)$', punctuation_with_space)
+    if punctuation_match:
+        punctuation_char = punctuation_match.group(1)
+        trailing_space = punctuation_match.group(2)
+        # Remove trailing space only if this is the last punctuation
+        if is_last_punctuation:
+            return punctuation_char
+        else:
+            return punctuation_char + trailing_space
+    else:
+        return punctuation_with_space
+
+
 def replace_text_in_content(text: str) -> str:
     """
     Replaces text content with _TEXT_ while preserving Markdown formatting markers.
     Processes sentences: one sentence becomes _TEXT_. (comma is included in _TEXT_)
+    
+    Args:
+        text: Text content to process
     """
     if not text.strip():
         return text
@@ -556,8 +627,19 @@ def replace_text_in_content(text: str) -> str:
                     part = parts[i]
                     # Check if next part is punctuation
                     # Include full-width Japanese punctuation: 。！？
-                    if i + 1 < len(parts) and re.match(r'^[.!?。！？]\s*$', parts[i + 1]):
-                        punctuation = parts[i + 1]
+                    if i + 1 < len(parts) and is_sentence_ending_punctuation(parts[i + 1]):
+                        punctuation_with_space = parts[i + 1]
+                        # Check if this is the last punctuation in the segment
+                        # Look ahead to see if there's any actual text content after this punctuation
+                        is_last_punctuation = True
+                        for j in range(i + 2, len(parts)):
+                            if parts[j].strip() and contains_text_characters(parts[j]):
+                                is_last_punctuation = False
+                                break
+                        
+                        punctuation = process_punctuation_with_space(
+                            punctuation_with_space, is_last_punctuation
+                        )
                         i += 2
                     else:
                         punctuation = ''
@@ -571,10 +653,9 @@ def replace_text_in_content(text: str) -> str:
 
                     # Check if part contains any text (Korean, Japanese, English, numbers)
                     # Japanese ranges: Hiragana (\u3040-\u309F), Katakana (\u30A0-\u30FF), Kanji (\u4E00-\u9FAF)
-                    if re.search(r'[가-힣\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAFa-zA-Z0-9]', part):
+                    if contains_text_characters(part):
                         # Extract leading whitespace
-                        leading_match = re.match(r'^(\s*)', part)
-                        leading_ws = leading_match.group(1) if leading_match else ''
+                        leading_ws = extract_leading_whitespace(part)
 
                         # Replace entire sentence with _TEXT_ + punctuation
                         # Normalize punctuation: convert full-width Japanese punctuation to half-width for consistency
