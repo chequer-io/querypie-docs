@@ -18,7 +18,7 @@ Features Preserved:
 
     2. Code Blocks
        - Code blocks (```...```) are fully preserved as-is
-       - Inline code (`...`) is preserved as-is
+       - Inline code (`...`) text content is replaced with _TEXT_ placeholder (not preserved as-is)
 
     3. URLs and Links
        - URLs in links and images are preserved
@@ -120,9 +120,10 @@ class ContentProtector:
     This class protects the following content types from being modified:
     - YAML frontmatter
     - Code blocks (```...```)
-    - Inline code (`...`)
     - URLs in links and images
     - HTML entities (&amp;, &lt;, etc.)
+    
+    Note: Inline code (`...`) is NOT protected - its text content is converted to _TEXT_
     
     Protected sections are temporarily replaced with placeholders during text processing
     and restored at the end of the conversion process.
@@ -367,10 +368,11 @@ class TextProcessor:
                     continue
             
             # 3. Inline code
+            # Note: inline code text is converted to _TEXT_ (not preserved as-is)
             if text[i] == '`':
                 match = re.match(r'`([^`]+)`', text[i:])
                 if match:
-                    tokens.append(('code', match.group(1)))
+                    tokens.append(('code', '_TEXT_'))
                     i += len(match.group(0))
                     continue
             
@@ -456,9 +458,10 @@ class TextProcessor:
                     result_parts.append('[_TEXT_]')
             elif token_type == 'text':
                 # Preserve spaces in text segments
-                # Remove punctuation marks (periods, exclamation marks, question marks, colons, semicolons, commas)
+                # Remove punctuation marks (periods, exclamation marks, question marks, colons, semicolons, commas, Japanese comma)
                 # Note: Colon (:) in general text is NOT a markdown syntax element and is removed like other punctuation
-                cleaned = re.sub(r'[.,;:!?。！？]+', '', content)
+                # Note: Japanese comma (、) is treated the same as regular comma (,)
+                cleaned = re.sub(r'[.,;:!?。！？、]+', '', content)
                 if cleaned.strip():
                     # Regular text processing
                     if needs_space_before() and content and content[0] == ' ':
@@ -484,13 +487,16 @@ class TextProcessor:
         # Step 1: Merge consecutive _TEXT_ placeholders
         text = re.sub(r'_TEXT_([\s_]*_TEXT_)+', '_TEXT_', text)
         
-        # Step 2: Tokenize the text
+        # Step 2: Remove trailing spaces after HTML tags (e.g., <br/>  -> <br/>)
+        text = re.sub(r'(<br/?>|/>)\s+', r'\1', text)
+        
+        # Step 3: Tokenize the text
         tokens = self._tokenize_for_cleanup(text)
         
-        # Step 3: Normalize spacing between tokens
+        # Step 4: Normalize spacing between tokens
         normalized_parts = self._normalize_spacing(tokens)
         
-        # Step 4: Join tokens back into string
+        # Step 5: Join tokens back into string
         return ''.join(normalized_parts)
     
     def _tokenize_for_cleanup(self, text: str) -> List[Tuple[str, str]]:
@@ -537,15 +543,24 @@ class TextProcessor:
             elif i + 1 < len(text) and text[i:i+2] == '/>':
                 tokens.append(('html_tag', '/>'))
                 i += 2
-            # 6. Whitespace
+            # 6. HTML entity: &lt;, &gt;, &amp;, etc.
+            elif text[i] == '&':
+                match = re.match(r'(&[a-zA-Z]+;|&#\d+;|&#x[0-9a-fA-F]+;)', text[i:])
+                if match:
+                    tokens.append(('html_entity', match.group(0)))
+                    i += len(match.group(0))
+                else:
+                    tokens.append(('text', text[i]))
+                    i += 1
+            # 7. Whitespace
             elif text[i] in ' \n\t':
                 tokens.append(('whitespace', text[i]))
                 i += 1
-            # 7. _TEXT_ placeholder
+            # 8. _TEXT_ placeholder
             elif text[i:].startswith('_TEXT_'):
                 tokens.append(('text_placeholder', '_TEXT_'))
                 i += len('_TEXT_')
-            # 8. 기타 문자
+            # 9. 기타 문자
             else:
                 tokens.append(('text', text[i]))
                 i += 1
@@ -570,8 +585,8 @@ class TextProcessor:
                 if token_type in ('bold', 'italic') and next_type not in ('whitespace', 'bold', 'italic'):
                     needs_space = True
                 
-                # 2. Inline code 다음에 공백이 아닌 텍스트가 오면 공백 추가
-                elif token_type == 'code' and next_type not in ('whitespace', 'code'):
+                # 2. Inline code 다음에 공백이 아닌 텍스트가 오면 공백 추가 (다음이 code여도 공백 추가)
+                elif token_type == 'code' and next_type != 'whitespace':
                     needs_space = True
                 
                 # 3. Link 다음에 공백이 아닌 텍스트가 오면 공백 추가
@@ -582,8 +597,24 @@ class TextProcessor:
                 elif token_type == 'html_tag' and next_type not in ('whitespace', 'html_tag'):
                     needs_space = True
                 
-                # 5. _TEXT_ 다음에 HTML tag가 오면 공백 추가 (역방향)
+                # 5. HTML entity 다음에 공백이 아닌 텍스트가 오면 공백 추가
+                elif token_type == 'html_entity' and next_type not in ('whitespace', 'html_entity'):
+                    needs_space = True
+                
+                # 6. _TEXT_ 다음에 HTML tag가 오면 공백 추가 (역방향)
                 elif token_type == 'text_placeholder' and next_type == 'html_tag':
+                    needs_space = True
+                
+                # 7. _TEXT_ 다음에 HTML entity가 오면 공백 추가 (역방향)
+                elif token_type == 'text_placeholder' and next_type == 'html_entity':
+                    needs_space = True
+                
+                # 8. _TEXT_ 다음에 inline code가 오면 공백 추가
+                elif token_type == 'text_placeholder' and next_type == 'code':
+                    needs_space = True
+                
+                # 9. _TEXT_ 다음에 _TEXT_가 오면 공백 추가 (변환 결과물 사이 공백 보장)
+                elif token_type == 'text_placeholder' and next_type == 'text_placeholder':
                     needs_space = True
                 
                 # 공백 추가 (다음 토큰이 공백이 아닐 때만)
@@ -788,7 +819,7 @@ def convert_mdx_to_skeleton(input_path: Path) -> Tuple[Path, Optional[str]]:
 
     # Step 2: Extract and protect other content sections
     content = protector.extract_code_blocks(content)
-    content = protector.extract_inline_code(content)
+    # Note: inline code is no longer protected - its text content will be converted to _TEXT_
     content = protector.extract_urls(content)  # Now handles both links and images
     content = protector.extract_html_entities(content)
 
@@ -836,6 +867,24 @@ def convert_mdx_to_skeleton(input_path: Path) -> Tuple[Path, Optional[str]]:
 
     # Step 4: Restore all protected sections (including image links)
     content = protector.restore_all(content)
+    
+    # Step 5: Post-processing to handle special cases
+    # Normalize spacing after HTML entities: ensure space between HTML entity and _TEXT_
+    # Pattern: &lt;_TEXT_ -> &lt; _TEXT_, &gt;_TEXT_ -> &gt; _TEXT_
+    content = re.sub(r'(&[a-zA-Z]+;|&#\d+;|&#x[0-9a-fA-F]+;)(_TEXT_)', r'\1 \2', content)
+    # Pattern: _TEXT_&lt; -> _TEXT_ &lt;, _TEXT_&gt; -> _TEXT_ &gt;
+    content = re.sub(r'(_TEXT_)(&[a-zA-Z]+;|&#\d+;|&#x[0-9a-fA-F]+;)', r'\1 \2', content)
+    
+    # Remove trailing spaces after HTML tags at end of lines
+    content = re.sub(r'(<br/?>|/>)\s+\n', r'\1\n', content)
+    # Remove trailing spaces after HTML tags before newlines (but preserve spaces before other content)
+    lines = content.split('\n')
+    processed_final_lines = []
+    for line in lines:
+        # Remove trailing space after /> or <br/> at end of line
+        line = re.sub(r'(<br/?>|/>)\s+$', r'\1', line)
+        processed_final_lines.append(line)
+    content = '\n'.join(processed_final_lines)
 
     # Generate output path
     output_path = input_path.parent / f"{input_path.stem}.skel.mdx"
