@@ -84,6 +84,7 @@ Whitespace Normalization Rules:
 """
 
 import argparse
+import logging
 import re
 import sys
 from dataclasses import dataclass
@@ -97,6 +98,17 @@ from skeleton_diff import (
     process_directories_recursive,
     initialize_config,
 )
+from skeleton_common import (
+    extract_language_code,
+    get_korean_equivalent_path,
+)
+
+# Set up logger
+logging.basicConfig(
+    level=logging.WARNING,
+    format='%(levelname)s: %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -938,7 +950,7 @@ def delete_skeleton_files(directories: List[Path]) -> int:
     return 0 if total_errors == 0 else 1
 
 
-def convert_mdx_to_skeleton(input_path: Path) -> Tuple[Path, Optional[str], Optional[Path]]:
+def convert_mdx_to_skeleton(input_path: Path) -> Path:
     """
     Converts an MDX file to skeleton format.
     
@@ -968,10 +980,7 @@ def convert_mdx_to_skeleton(input_path: Path) -> Tuple[Path, Optional[str], Opti
         input_path: Path to the input MDX file
         
     Returns:
-        Tuple of (output_path, comparison_result, unmatched_file_path)
-        - output_path: Path to the generated skeleton MDX file
-        - comparison_result: Optional comparison result with Korean skeleton file
-        - unmatched_file_path: Path to the unmatched .mdx file (with target/{lang} prefix) if unmatched, None otherwise
+        Path to the generated skeleton MDX file
     """
     if not input_path.exists():
         raise FileNotFoundError(f"Input file not found: {input_path}")
@@ -1068,9 +1077,98 @@ def convert_mdx_to_skeleton(input_path: Path) -> Tuple[Path, Optional[str], Opti
     # Write output file
     output_path.write_text(content, encoding='utf-8')
 
-    # Compare with Korean equivalent if current file is not Korean
-    _, comparison_result, unmatched_file_path = compare_with_korean_skel(output_path)
+    return output_path
 
+
+def compare_skeleton_files(
+    korean_skel_path: Path,
+    translation_skel_path: Path,
+    translation_mdx_path: Path
+) -> Tuple[bool, Optional[str], Optional[Path]]:
+    """
+    Compare two skeleton MDX files and return comparison result.
+    
+    This function compares the Korean skeleton file with the translation skeleton file
+    and returns the comparison result. It uses the common comparison logic from skeleton_diff module.
+    
+    Args:
+        korean_skel_path: Path to the Korean skeleton MDX file
+        translation_skel_path: Path to the translation skeleton MDX file
+        translation_mdx_path: Path to the original translation MDX file (for error reporting)
+    
+    Returns:
+        Tuple of (should_continue, comparison_result, unmatched_file_path)
+        - should_continue: True if it should continue processing, False if max_diff is reached and should stop
+        - comparison_result: 'matched' if files are identical, 'unmatched' if different, None if not compared
+        - unmatched_file_path: Path to the unmatched .mdx file (with target/{lang} prefix) if unmatched, None otherwise
+    """
+    import skeleton_diff
+    # Access the internal comparison function
+    return skeleton_diff._compare_two_skeleton_files(
+        korean_skel_path,
+        translation_skel_path,
+        translation_mdx_path
+    )
+
+
+def convert_and_compare_mdx_to_skeleton(input_path: Path) -> Tuple[Path, Optional[str], Optional[Path]]:
+    """
+    Converts an MDX file to skeleton format and compares it with Korean equivalent.
+    
+    This function performs the following steps:
+    1. Converts the input MDX file to skeleton MDX (deletes existing skeleton if present)
+    2. Finds the corresponding Korean MDX file (raises error if not found)
+    3. Converts the Korean MDX file to skeleton MDX (deletes existing skeleton if present)
+    4. Compares the translation skeleton MDX with the Korean skeleton MDX
+    
+    Args:
+        input_path: Path to the input MDX file
+        
+    Returns:
+        Tuple of (output_path, comparison_result, unmatched_file_path)
+        - output_path: Path to the generated skeleton MDX file
+        - comparison_result: 'matched' if files are identical, 'unmatched' if different, None if not compared
+        - unmatched_file_path: Path to the unmatched .mdx file (with target/{lang} prefix) if unmatched, None otherwise
+        
+    Raises:
+        FileNotFoundError: If Korean MDX file is not found
+    """
+    # Step 1: Convert input MDX to skeleton MDX
+    # Delete existing skeleton file if it exists
+    output_path = input_path.parent / f"{input_path.stem}.skel.mdx"
+    if output_path.exists():
+        output_path.unlink()
+    
+    # Convert and save
+    output_path = convert_mdx_to_skeleton(input_path)
+    
+    # Step 2: Find corresponding Korean MDX file
+    # Check if current file is Korean first
+    current_lang = extract_language_code(input_path)
+    if current_lang == 'ko':
+        # Korean file, no need to compare
+        return output_path, None, None
+    
+    # Get Korean equivalent path
+    korean_mdx_path, korean_exists = get_korean_equivalent_path(input_path)
+    if not korean_exists:
+        logger.warning(f"Corresponding Korean MDX file not found: {korean_mdx_path}")
+        return output_path, None, None
+
+    # Step 3: Convert Korean MDX to skeleton MDX
+    # Delete existing skeleton file if it exists
+    korean_skel_path = korean_mdx_path.parent / f"{korean_mdx_path.stem}.skel.mdx"
+    if korean_skel_path.exists():
+        korean_skel_path.unlink()
+    
+    # Convert and save
+    korean_skel_path = convert_mdx_to_skeleton(korean_mdx_path)
+    
+    # Step 4: Compare translation skeleton MDX with Korean skeleton MDX
+    _, comparison_result, unmatched_file_path = compare_skeleton_files(
+        korean_skel_path, output_path, input_path
+    )
+    
     return output_path, comparison_result, unmatched_file_path
 
 
@@ -1162,7 +1260,7 @@ def main():
             return 0
         elif args.recursive is not None:
             # Recursive mode: process directories
-            exit_code, unmatched_file_paths = process_directories_recursive(args.recursive, convert_mdx_to_skeleton)
+            exit_code, unmatched_file_paths = process_directories_recursive(args.recursive, convert_and_compare_mdx_to_skeleton)
             
             # Save unmatched file paths to output file if specified
             if args.output is not None:
@@ -1182,7 +1280,7 @@ def main():
                 print("Error: Input path is a directory. Use -r option for directory processing.", file=sys.stderr)
                 return 1
 
-            output_path, _, _ = convert_mdx_to_skeleton(args.input_path)
+            output_path, _, _ = convert_and_compare_mdx_to_skeleton(args.input_path)
             return 0
         else:
             # No arguments provided
