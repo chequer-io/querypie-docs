@@ -1,7 +1,13 @@
-export default {
+import type { MetaRecord } from 'nextra';
+
+const meta: MetaRecord = {
   '11.4.1': {
-    title: 'バージョン 11.4.1',
-    type: 'page',
+    title: 'Version 11.4.1',
+    theme: {
+      collapsed: false,
+    },
   },
 };
+
+export default meta;
 
