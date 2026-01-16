@@ -64592,17 +64592,8 @@
         "description": "Contents may vary based on data source type of the DB connection"
       },
       "com.querypie.api.external.v2.dbam.connection.ExternalV2ConnectionDto$GetDbConnectionResponse": {
-        "required": [
-          "common"
-        ],
         "type": "object",
-        "properties": {
-          "common": {
-            "$ref": "#/components/schemas/com.querypie.api.external.v2.dbam.connection.ExternalV2ConnectionDto$GetDbConnectionResponseCommon"
-          }
-        },
         "discriminator": {
-          "propertyName": "databaseType",
           "mapping": {
             "ATHENA": "#/components/schemas/com.querypie.api.external.v2.dbam.connection.ExternalV2ConnectionDto$AthenaConnectionResponse",
             "AZURESQL": "#/components/schemas/com.querypie.api.external.v2.dbam.connection.ExternalV2ConnectionDto$AzureSQLConnectionResponse",
@@ -64630,7 +64621,8 @@
             "SQLSERVER": "#/components/schemas/com.querypie.api.external.v2.dbam.connection.ExternalV2ConnectionDto$SQLServerConnectionResponse",
             "TIBERO": "#/components/schemas/com.querypie.api.external.v2.dbam.connection.ExternalV2ConnectionDto$TiberoConnectionResponse",
             "TRINO": "#/components/schemas/com.querypie.api.external.v2.dbam.connection.ExternalV2ConnectionDto$TrinoConnectionResponse"
-          }
+          },
+          "propertyName": "databaseType"
         },
         "oneOf": [
           {
@@ -64711,6 +64703,14 @@
           {
             "$ref": "#/components/schemas/com.querypie.api.external.v2.dbam.connection.ExternalV2ConnectionDto$ShardingSphereMySqlConnectionResponse"
           }
+        ],
+        "properties": {
+          "common": {
+            "$ref": "#/components/schemas/com.querypie.api.external.v2.dbam.connection.ExternalV2ConnectionDto$GetDbConnectionResponseCommon"
+          }
+        },
+        "required": [
+          "common"
         ]
       },
       "com.querypie.api.external.v2.dbam.connection.ExternalV2ConnectionDto$GetDbConnectionResponseCommon": {
@@ -69910,10 +69910,10 @@
           }
         },
         "discriminator": {
-          "propertyName": "secretStoreType",
           "mapping": {
             "HASHICORP_VAULT": "#/components/schemas/com.querypie.api.external.v2.secretstore.ExternalV2SecretStoreDto$AddRequest$Vault"
-          }
+          },
+          "propertyName": "secretStoreType"
         }
       },
       "com.querypie.api.external.v2.secretstore.ExternalV2SecretStoreDto$AddRequest$Vault": {
@@ -70007,10 +70007,10 @@
           }
         },
         "discriminator": {
-          "propertyName": "secretStoreType",
           "mapping": {
             "HASHICORP_VAULT": "#/components/schemas/com.querypie.api.external.v2.secretstore.ExternalV2SecretStoreDto$DetailResponse$Vault"
-          }
+          },
+          "propertyName": "secretStoreType"
         }
       },
       "com.querypie.api.external.v2.secretstore.ExternalV2SecretStoreDto$DetailResponse$Vault": {
@@ -70069,17 +70069,17 @@
       },
       "com.querypie.api.external.v2.secretstore.ExternalV2SecretStoreDto$EditRequest": {
         "type": "object",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/com.querypie.api.external.v2.secretstore.ExternalV2SecretStoreDto$EditRequest$Vault"
+          }
+        ],
         "properties": {
           "name": {
             "type": "string",
             "description": "Secret store name"
           }
-        },
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/com.querypie.api.external.v2.secretstore.ExternalV2SecretStoreDto$EditRequest$Vault"
-          }
-        ]
+        }
       },
       "com.querypie.api.external.v2.secretstore.ExternalV2SecretStoreDto$EditRequest$Vault": {
         "title": "HASHICORP_VAULT",
@@ -78837,30 +78837,16 @@
         }
       },
       "com.querypie.sam.interfaces.http.external.AwsCredential": {
-        "required": [
-          "credentialOption"
-        ],
         "type": "object",
-        "properties": {
-          "credentialOption": {
-            "type": "string",
-            "enum": [
-              "DEFAULT_CREDENTIAL",
-              "CROSS_ACCOUNT_ROLE",
-              "PROFILE_CREDENTIAL",
-              "ACCESS_KEY"
-            ]
-          }
-        },
         "description": "Credential Details",
         "discriminator": {
-          "propertyName": "credentialOption",
           "mapping": {
             "ACCESS_KEY": "#/components/schemas/com.querypie.sam.interfaces.http.external.AccessKeyCredential",
             "CROSS_ACCOUNT_ROLE": "#/components/schemas/com.querypie.sam.interfaces.http.external.CrossAccountRole",
             "DEFAULT_CREDENTIAL": "#/components/schemas/com.querypie.sam.interfaces.http.external.DefaultCredential",
             "PROFILE_CREDENTIAL": "#/components/schemas/com.querypie.sam.interfaces.http.external.ProfileCredential"
-          }
+          },
+          "propertyName": "credentialOption"
         },
         "oneOf": [
           {
@@ -78875,13 +78861,36 @@
           {
             "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.AccessKeyCredential"
           }
+        ],
+        "properties": {
+          "credentialOption": {
+            "type": "string",
+            "enum": [
+              "DEFAULT_CREDENTIAL",
+              "CROSS_ACCOUNT_ROLE",
+              "PROFILE_CREDENTIAL",
+              "ACCESS_KEY"
+            ]
+          }
+        },
+        "required": [
+          "credentialOption"
         ]
       },
       "com.querypie.sam.interfaces.http.external.AzureCredential": {
-        "required": [
-          "credentialOption"
-        ],
         "type": "object",
+        "description": "Credential Details",
+        "discriminator": {
+          "mapping": {
+            "CLIENT_SECRET": "#/components/schemas/com.querypie.sam.interfaces.http.external.ClientSecret"
+          },
+          "propertyName": "credentialOption"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.ClientSecret"
+          }
+        ],
         "properties": {
           "credentialOption": {
             "type": "string",
@@ -78890,17 +78899,8 @@
             ]
           }
         },
-        "description": "Credential Details",
-        "discriminator": {
-          "propertyName": "credentialOption",
-          "mapping": {
-            "CLIENT_SECRET": "#/components/schemas/com.querypie.sam.interfaces.http.external.ClientSecret"
-          }
-        },
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.ClientSecret"
-          }
+        "required": [
+          "credentialOption"
         ]
       },
       "com.querypie.sam.interfaces.http.external.ClientSecret": {
@@ -79222,13 +79222,26 @@
         }
       },
       "com.querypie.sam.interfaces.http.external.CreateCloudProviderRequest": {
-        "required": [
-          "name",
-          "port",
-          "replicationFrequency",
-          "type"
-        ],
         "type": "object",
+        "discriminator": {
+          "mapping": {
+            "AWS": "#/components/schemas/com.querypie.sam.interfaces.http.external.CreateAwsCloudProviderRequest",
+            "AZURE": "#/components/schemas/com.querypie.sam.interfaces.http.external.CreateAzureCloudProviderRequest",
+            "GCP": "#/components/schemas/com.querypie.sam.interfaces.http.external.CreateGcpCloudProviderRequest"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.CreateAwsCloudProviderRequest"
+          },
+          {
+            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.CreateGcpCloudProviderRequest"
+          },
+          {
+            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.CreateAzureCloudProviderRequest"
+          }
+        ],
         "properties": {
           "defaultTags": {
             "type": "array",
@@ -79278,24 +79291,11 @@
             "default": false
           }
         },
-        "discriminator": {
-          "propertyName": "type",
-          "mapping": {
-            "AWS": "#/components/schemas/com.querypie.sam.interfaces.http.external.CreateAwsCloudProviderRequest",
-            "AZURE": "#/components/schemas/com.querypie.sam.interfaces.http.external.CreateAzureCloudProviderRequest",
-            "GCP": "#/components/schemas/com.querypie.sam.interfaces.http.external.CreateGcpCloudProviderRequest"
-          }
-        },
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.CreateAwsCloudProviderRequest"
-          },
-          {
-            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.CreateGcpCloudProviderRequest"
-          },
-          {
-            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.CreateAzureCloudProviderRequest"
-          }
+        "required": [
+          "name",
+          "port",
+          "replicationFrequency",
+          "type"
         ]
       },
       "com.querypie.sam.interfaces.http.external.CreateCloudProviderResponse": {
@@ -79514,10 +79514,15 @@
         }
       },
       "com.querypie.sam.interfaces.http.external.CreateServerAccountRequest": {
-        "required": [
-          "accountType"
-        ],
         "type": "object",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.CreateServerAccountRequest$Querypie"
+          },
+          {
+            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.CreateServerAccountRequest$Vault"
+          }
+        ],
         "properties": {
           "accountType": {
             "type": "string",
@@ -79528,13 +79533,8 @@
             ]
           }
         },
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.CreateServerAccountRequest$Querypie"
-          },
-          {
-            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.CreateServerAccountRequest$Vault"
-          }
+        "required": [
+          "accountType"
         ]
       },
       "com.querypie.sam.interfaces.http.external.CreateServerAccountRequest$Querypie": {
@@ -80396,10 +80396,19 @@
         "description": "Server Search Filter"
       },
       "com.querypie.sam.interfaces.http.external.GcpCredential": {
-        "required": [
-          "credentialOption"
-        ],
         "type": "object",
+        "description": "Credential Details",
+        "discriminator": {
+          "mapping": {
+            "SERVICE_ACCOUNT": "#/components/schemas/com.querypie.sam.interfaces.http.external.ServiceAccount"
+          },
+          "propertyName": "credentialOption"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.ServiceAccount"
+          }
+        ],
         "properties": {
           "credentialOption": {
             "type": "string",
@@ -80408,17 +80417,8 @@
             ]
           }
         },
-        "description": "Credential Details",
-        "discriminator": {
-          "propertyName": "credentialOption",
-          "mapping": {
-            "SERVICE_ACCOUNT": "#/components/schemas/com.querypie.sam.interfaces.http.external.ServiceAccount"
-          }
-        },
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.ServiceAccount"
-          }
+        "required": [
+          "credentialOption"
         ]
       },
       "com.querypie.sam.interfaces.http.external.GetAssignedRolesResponse": {
@@ -80801,18 +80801,27 @@
         }
       },
       "com.querypie.sam.interfaces.http.external.GetCloudProviderResponse": {
-        "required": [
-          "defaultTags",
-          "name",
-          "port",
-          "replicationFrequency",
-          "searchFilter",
-          "type",
-          "useCaseSensitive",
-          "useRegularExpression",
-          "uuid"
-        ],
         "type": "object",
+        "description": "Object list per entry",
+        "discriminator": {
+          "mapping": {
+            "AWS": "#/components/schemas/com.querypie.sam.interfaces.http.external.GetAwsCloudProviderResponse",
+            "AZURE": "#/components/schemas/com.querypie.sam.interfaces.http.external.GetAzureCloudProviderResponse",
+            "GCP": "#/components/schemas/com.querypie.sam.interfaces.http.external.GetGcpCloudProviderResponse"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.GetAwsCloudProviderResponse"
+          },
+          {
+            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.GetGcpCloudProviderResponse"
+          },
+          {
+            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.GetAzureCloudProviderResponse"
+          }
+        ],
         "properties": {
           "defaultTags": {
             "type": "array",
@@ -80864,25 +80873,16 @@
             "format": "uuid"
           }
         },
-        "description": "Object list per entry",
-        "discriminator": {
-          "propertyName": "type",
-          "mapping": {
-            "AWS": "#/components/schemas/com.querypie.sam.interfaces.http.external.GetAwsCloudProviderResponse",
-            "AZURE": "#/components/schemas/com.querypie.sam.interfaces.http.external.GetAzureCloudProviderResponse",
-            "GCP": "#/components/schemas/com.querypie.sam.interfaces.http.external.GetGcpCloudProviderResponse"
-          }
-        },
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.GetAwsCloudProviderResponse"
-          },
-          {
-            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.GetGcpCloudProviderResponse"
-          },
-          {
-            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.GetAzureCloudProviderResponse"
-          }
+        "required": [
+          "defaultTags",
+          "name",
+          "port",
+          "replicationFrequency",
+          "searchFilter",
+          "type",
+          "useCaseSensitive",
+          "useRegularExpression",
+          "uuid"
         ]
       },
       "com.querypie.sam.interfaces.http.external.GetGcpCloudProviderResponse": {
@@ -81624,8 +81624,8 @@
           },
           "expirationDate": {
             "type": "string",
-            "description": "Expiration date ( e.g., yyyy-MM-dd ) if not included in the API call, it never expires",
-            "format": "date"
+            "format": "date",
+            "description": "Expiration date ( e.g., yyyy-MM-dd ) if not included in the API call, it never expires"
           },
           "ipAddresses": {
             "type": "array",
@@ -81709,8 +81709,8 @@
           },
           "whitelistExpirationDate": {
             "type": "string",
-            "description": "Whitelist expiration date ( e.g., yyyy-MM-dd )<br>\n                If not mentioned, it will follow the value defined in expirationDate.",
-            "format": "date"
+            "format": "date",
+            "description": "Whitelist expiration date ( e.g., yyyy-MM-dd )<br>\n                If not mentioned, it will follow the value defined in expirationDate."
           }
         },
         "description": "Whitelist<br>If this object is not included in the API call, this Direct Permission will be granted without whitelists."
@@ -81794,8 +81794,8 @@
           },
           "expirationDate": {
             "type": "string",
-            "description": "Expiration date ( e.g., yyyy-MM-dd ) if not included in the API call, it never expires",
-            "format": "date"
+            "format": "date",
+            "description": "Expiration date ( e.g., yyyy-MM-dd ) if not included in the API call, it never expires"
           },
           "ipAddresses": {
             "type": "array",
@@ -81881,8 +81881,8 @@
           },
           "whitelistExpirationDate": {
             "type": "string",
-            "description": "Whitelist expiration date ( e.g., yyyy-MM-dd )<br>\n                If not mentioned, it will follow the value defined in expirationDate.",
-            "format": "date"
+            "format": "date",
+            "description": "Whitelist expiration date ( e.g., yyyy-MM-dd )<br>\n                If not mentioned, it will follow the value defined in expirationDate."
           }
         },
         "description": "Whitelist<br>If this object is not included in the API call, this Direct Permission will be granted without whitelists."
@@ -82116,8 +82116,8 @@
           },
           "expiryAt": {
             "type": "string",
-            "description": "Expiration date ( e.g., yyyy-MM-dd )",
-            "format": "date"
+            "format": "date",
+            "description": "Expiration date ( e.g., yyyy-MM-dd )"
           },
           "serverRoleUuids": {
             "type": "array",
@@ -82172,8 +82172,8 @@
           },
           "whitelistExpirationDate": {
             "type": "string",
-            "description": "Whitelist expiration date ( e.g., yyyy-MM-dd )<br>If not mentioned, it will follow the value defined in expirationDate.",
-            "format": "date"
+            "format": "date",
+            "description": "Whitelist expiration date ( e.g., yyyy-MM-dd )<br>If not mentioned, it will follow the value defined in expirationDate."
           }
         },
         "description": "Whitelist"
@@ -82427,22 +82427,14 @@
         "description": "Cloud provider tag info"
       },
       "com.querypie.sam.interfaces.http.external.ListServerAccountsResponse": {
-        "required": [
-          "common"
-        ],
         "type": "object",
-        "properties": {
-          "common": {
-            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.ListServerAccountsResponseCommonItem"
-          }
-        },
         "description": "Object list per entry",
         "discriminator": {
-          "propertyName": "accountType",
           "mapping": {
             "QUERYPIE": "#/components/schemas/com.querypie.sam.interfaces.http.external.QuerypieAccount",
             "VAULT": "#/components/schemas/com.querypie.sam.interfaces.http.external.VaultAccount"
-          }
+          },
+          "propertyName": "accountType"
         },
         "oneOf": [
           {
@@ -82451,6 +82443,14 @@
           {
             "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.VaultAccount"
           }
+        ],
+        "properties": {
+          "common": {
+            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.ListServerAccountsResponseCommonItem"
+          }
+        },
+        "required": [
+          "common"
         ]
       },
       "com.querypie.sam.interfaces.http.external.ListServerAccountsResponseCommonItem": {
@@ -83036,10 +83036,23 @@
         }
       },
       "com.querypie.sam.interfaces.http.external.ReplicationFrequency": {
-        "required": [
-          "replicationType"
-        ],
         "type": "object",
+        "description": "Replication Frequency",
+        "discriminator": {
+          "mapping": {
+            "MANUAL": "#/components/schemas/com.querypie.sam.interfaces.http.external.ReplicationFrequency$Manual",
+            "SCHEDULE": "#/components/schemas/com.querypie.sam.interfaces.http.external.ReplicationFrequency$Schedule"
+          },
+          "propertyName": "replicationType"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.ReplicationFrequency$Manual"
+          },
+          {
+            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.ReplicationFrequency$Schedule"
+          }
+        ],
         "properties": {
           "replicationType": {
             "type": "string",
@@ -83050,21 +83063,8 @@
             ]
           }
         },
-        "description": "Replication Frequency",
-        "discriminator": {
-          "propertyName": "replicationType",
-          "mapping": {
-            "MANUAL": "#/components/schemas/com.querypie.sam.interfaces.http.external.ReplicationFrequency$Manual",
-            "SCHEDULE": "#/components/schemas/com.querypie.sam.interfaces.http.external.ReplicationFrequency$Schedule"
-          }
-        },
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.ReplicationFrequency$Manual"
-          },
-          {
-            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.ReplicationFrequency$Schedule"
-          }
+        "required": [
+          "replicationType"
         ]
       },
       "com.querypie.sam.interfaces.http.external.ReplicationFrequency$Manual": {
@@ -83534,28 +83534,14 @@
         }
       },
       "com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest": {
-        "required": [
-          "type"
-        ],
         "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "AWS",
-              "GCP",
-              "AZURE",
-              "CUSTOM"
-            ]
-          }
-        },
         "discriminator": {
-          "propertyName": "type",
           "mapping": {
             "AWS": "#/components/schemas/com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Aws",
             "AZURE": "#/components/schemas/com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Azure",
             "GCP": "#/components/schemas/com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Gcp"
-          }
+          },
+          "propertyName": "type"
         },
         "oneOf": [
           {
@@ -83567,6 +83553,20 @@
           {
             "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Azure"
           }
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "AWS",
+              "GCP",
+              "AZURE",
+              "CUSTOM"
+            ]
+          }
+        },
+        "required": [
+          "type"
         ]
       },
       "com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Aws": {
@@ -83591,10 +83591,19 @@
         }
       },
       "com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Aws$Credential": {
-        "required": [
-          "credentialOption"
-        ],
         "type": "object",
+        "description": "Credential Details",
+        "discriminator": {
+          "mapping": {
+            "ACCESS_KEY": "#/components/schemas/com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Aws$Credential$AccessKey"
+          },
+          "propertyName": "credentialOption"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Aws$Credential$AccessKey"
+          }
+        ],
         "properties": {
           "credentialOption": {
             "type": "string",
@@ -83603,17 +83612,8 @@
             ]
           }
         },
-        "description": "Credential Details",
-        "discriminator": {
-          "propertyName": "credentialOption",
-          "mapping": {
-            "ACCESS_KEY": "#/components/schemas/com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Aws$Credential$AccessKey"
-          }
-        },
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Aws$Credential$AccessKey"
-          }
+        "required": [
+          "credentialOption"
         ]
       },
       "com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Aws$Credential$AccessKey": {
@@ -83662,10 +83662,19 @@
         }
       },
       "com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Azure$Credential": {
-        "required": [
-          "credentialOption"
-        ],
         "type": "object",
+        "description": "Credential Details",
+        "discriminator": {
+          "mapping": {
+            "CLIENT_SECRET": "#/components/schemas/com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Azure$Credential$ClientSecret"
+          },
+          "propertyName": "credentialOption"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Azure$Credential$ClientSecret"
+          }
+        ],
         "properties": {
           "credentialOption": {
             "type": "string",
@@ -83674,17 +83683,8 @@
             ]
           }
         },
-        "description": "Credential Details",
-        "discriminator": {
-          "propertyName": "credentialOption",
-          "mapping": {
-            "CLIENT_SECRET": "#/components/schemas/com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Azure$Credential$ClientSecret"
-          }
-        },
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Azure$Credential$ClientSecret"
-          }
+        "required": [
+          "credentialOption"
         ]
       },
       "com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Azure$Credential$ClientSecret": {
@@ -83733,10 +83733,19 @@
         }
       },
       "com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Gcp$Credential": {
-        "required": [
-          "credentialOption"
-        ],
         "type": "object",
+        "description": "Credential Details",
+        "discriminator": {
+          "mapping": {
+            "SERVICE_ACCOUNT": "#/components/schemas/com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Gcp$Credential$ServiceAccount"
+          },
+          "propertyName": "credentialOption"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Gcp$Credential$ServiceAccount"
+          }
+        ],
         "properties": {
           "credentialOption": {
             "type": "string",
@@ -83745,17 +83754,8 @@
             ]
           }
         },
-        "description": "Credential Details",
-        "discriminator": {
-          "propertyName": "credentialOption",
-          "mapping": {
-            "SERVICE_ACCOUNT": "#/components/schemas/com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Gcp$Credential$ServiceAccount"
-          }
-        },
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Gcp$Credential$ServiceAccount"
-          }
+        "required": [
+          "credentialOption"
         ]
       },
       "com.querypie.sam.interfaces.http.external.SyncCloudProviderRequest$Gcp$Credential$ServiceAccount": {
