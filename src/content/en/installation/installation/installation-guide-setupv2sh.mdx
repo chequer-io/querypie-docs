@@ -14,7 +14,7 @@ Even with a simple configuration installation, you can test most QueryPie featur
 
 The setup.v2.sh installation program introduced in this guide automatically performs the existing installation process.
 The automated installation process is largely the same as the existing installation process.
-For the existing installation process, please refer to this document: [https://querypie.atlassian.net/wiki/spaces/QM/pages/964952065/-?atl_f=PAGETREE](https://querypie.atlassian.net/wiki/spaces/QM/pages/964952065/-?atl_f=PAGETREE)
+For the existing installation process, please refer to this document: [Installation Guide - Simple Configuration](installation-guide-simple-configuration)
 
 This installation method is not suitable for use in actual production environments.
 For installation methods suitable for actual production environments, please refer to the separately provided [QueryPie Installation Guide].
@@ -31,7 +31,7 @@ In summary, they are as follows.
 * 1 Linux server
 * 1 PC with a web browser installed
 
-For details, please refer to the following document: [Prerequisites - Simple Configuration](../prerequisites)
+For details, please refer to the following document: [Prerequisites](../prerequisites)
 
 ## System Architecture
 
@@ -94,6 +94,7 @@ OPTIONS:
 $ 
 ```
 
+
 ### Installing QueryPie in Podman Environment
 
 Starting from `setup.v2.sh` version `25.08.8`, it supports execution environments with Podman + Docker Compose combination.
@@ -153,6 +154,7 @@ After `setup.v2.sh` successfully starts the querypie-app container, you will see
 [ec2-user@ip-172-31-11-201 ~]$ 
 ```
 
+
 ### Installation Complete
 
 Great job.
@@ -172,6 +174,7 @@ License files can be entered on the web console screen.
 Enter the license in PEM format.
 </figcaption>
 </figure>
+
 
 ## Basic Configuration Procedures
 
@@ -193,6 +196,7 @@ This URL is used for the following purposes.
 * Used as a callback address in the authentication process of SSO Integration.
 * Used in links to download User Agent from Web Console.
 * For other detailed purposes, please refer to [https://chequer.atlassian.net/wiki/spaces/QCP/pages/876937310](https://chequer.atlassian.net/wiki/spaces/QCP/pages/876937310).
+
 
 <figure data-layout="center" data-align="center">
 ![image-20250520-081112.png](/installation/installation/installation-guide-setupv2sh/image-20250520-081112.png)
@@ -256,6 +260,7 @@ UPDATE querypie.k_proxy_setting SET host = 'https://<customer-proxy-fqdn>';
 <figure data-layout="center" data-align="center">
 ![image-20250520-084243.png](/installation/installation/installation-guide-setupv2sh/image-20250520-084243.png)
 </figure>
+
 
 #### WAC: Proxy Access Address Settings
 
