@@ -1,312 +1,88 @@
-# Translation Guidelines
+# 번역 가이드라인
 
-## Overview
+## 개요
 
-This skill provides guidelines for translating content in the QueryPie documentation repository, which supports three languages: English (en), Japanese (ja), and Korean (ko).
+이 skill은 QueryPie 문서 저장소에서 콘텐츠를 번역하기 위한 가이드라인을 제공합니다.
 
-**Important**: The source language is **Korean (ko)**, not English. All translations should be done from Korean to English and Japanese.
+**상세 번역 지침**: [docs/translation.md](/docs/translation.md)를 반드시 참조하세요.
 
-## Project Context
+## 핵심 원칙
 
-- **Languages**: English (en), Japanese (ja), Korean (ko)
-- **Content Location**: `src/content/{lang}/`
-- **Source Language**: Korean (ko) - the original content
-- **Target Languages**: English (en), Japanese (ja)
-- **Translation Direction**: ko → en, ko → ja
+### 소스 언어
 
-## Translation Principles
+- **소스 언어**: 한국어 (ko) - `src/content/ko/`
+- **대상 언어**: 영어 (en), 일본어 (ja)
+- **번역 방향**: ko → en, ko → ja
 
-### Consistency
-
-1. **Terminology**: Use consistent technical terms across all languages
-2. **Structure**: Maintain the same document structure across languages
-3. **Formatting**: Preserve all markdown formatting, code blocks, and components
-4. **Links**: Update internal links to match the language structure
-
-### Accuracy
-
-1. **Technical Terms**: Preserve technical terms appropriately (may use English terms in some contexts)
-2. **Context**: Maintain the meaning and context of the original
-3. **Tone**: Match the professional tone of the documentation
-4. **Completeness**: Ensure all content is translated, including alt text and captions
-
-## File Structure
-
-### Directory Organization
+### 파일 구조
 
 ```
 src/content/
-├── ko/          # Korean (source/original)
-├── en/          # English (translated from Korean)
-└── ja/          # Japanese (translated from Korean)
+├── ko/          # 한국어 (소스/원본)
+├── en/          # 영어 (한국어에서 번역)
+└── ja/          # 일본어 (한국어에서 번역)
 ```
 
-Each language directory should have the same file structure. The path and filename after the language directory must be identical across all languages.
+모든 언어에서 동일한 파일 경로와 이름을 사용해야 합니다.
 
-### File Naming
+## 번역 프로세스 가이드라인
 
-- Use the same file names across all languages
-- Use kebab-case: `user-manual/workflow.mdx`
-- Example: All three languages have `user-manual/workflow.mdx`
+1. **일괄 처리**: 한 번에 50개 문서 번역 또는 검토 후 리뷰 요청
+2. **빌드 검증**: 번역 후 `npm run build` 실행하여 빌드 성공 확인
+3. **재번역 금지**: 특별히 지시하지 않는 한 이미 번역된 문서를 다시 번역하지 않음
+4. **피드백**: 한국어 소스에서 발견된 오류 및 번역 중 어려움 보고
 
-## Translation Workflow
+## 중요 번역 규칙 요약
 
-### Source Content
+### 반드시 보존할 것
 
-- **Original Content**: `src/content/ko/` - Korean MDX files are the source
-- **MDX Format**: Markdown with JSX extensions
-- **Inter-document Links**: MDX documents contain links that reference each other
+- 마크다운 포맷팅 (표, 목록, `**강조**` 등)
+- 줄 바꿈 형식
+- HTML 인코딩된 문자열 (`&lt;`, `&gt;`)
+- 문서 간 상대 경로 링크
+- 코드 블록 내용 (번역하지 않음)
 
-### When Translating New Content
+### 번역 대상
 
-1. **Start with Korean**: Korean version in `src/content/ko/` is the source
-2. **Translate to English**: Create English version in `src/content/en/` maintaining structure
-3. **Translate to Japanese**: Create Japanese version in `src/content/ja/` maintaining structure
-4. **Verify Consistency**: Check that all three versions have the same structure and file paths
+- Frontmatter 제목
+- 본문 텍스트
+- 이미지 alt 텍스트와 캡션
 
-### When Updating Existing Content
+### 번역하지 않는 것
 
-1. **Identify Changes**: Check Korean source for updates
-2. **Update Translations**: Update English and Japanese versions to match Korean changes
-3. **Maintain Alignment**: Ensure sections, headings, and links align across languages
-4. **Test**: Verify all language versions render correctly with `npm run build`
+- 코드 예시
+- 코드 주석 (영어로 유지)
+- 이미지 파일 (한국어 소스와 동일하게 사용)
+- 링크 경로 (텍스트만 번역)
 
-### Translation Process Guidelines
+## 언어별 톤 가이드
 
-1. **Batch Processing**: Translate or review 50 documents at a time, then request review
-2. **Build Verification**: After translation, run `npm run build` to verify MDX files build correctly
-   - Fix any build errors by checking error messages
-   - Repeat until `npm run build` succeeds
-   - Run `npm run build` directly without asking for confirmation
-3. **No Re-translation**: Do not re-translate already translated documents unless specifically instructed
-4. **No Re-review**: Do not perform proofreading on documents that already have review results unless specifically instructed
-5. **Feedback**: Report any typos, grammar errors, or inappropriate expressions found in Korean source, as well as any difficulties encountered during translation
+### 영어 (en)
 
-## Special Considerations
+- 표준 영어, 격식 있지만 친화적
+- 딱딱한 스타일보다 대화체 선호
+- 능동태 사용 권장
 
-### Frontmatter
+### 일본어 (ja)
 
-Translate the title in frontmatter. The Korean source has the original title:
+- 표준 일본어, 적절한 경어
+- 격식 있지만 친화적
+- 기술 용어는 영어 또는 가타카나 사용 가능
 
-```yaml
----
-title: 'Workflow'  # Korean (source)
----
-```
+## 품질 체크리스트
 
-```yaml
----
-title: 'Workflow'  # English (translated)
----
-```
+번역 완료 전:
 
-```yaml
----
-title: 'ワークフロー'  # Japanese (translated)
----
-```
+- [ ] 모든 콘텐츠가 한국어에서 번역됨
+- [ ] 마크다운 포맷팅이 원본과 동일함
+- [ ] `npm run build` 성공
+- [ ] 구조가 한국어 소스와 일치함
 
-### Code Blocks
+## 상세 지침
 
-- **Do NOT translate code**: Keep code examples in their original language
-- **Comments in code**: Code comments should remain in English (project preference)
-- **Language tags**: Keep language tags as-is: ````bash`, ````typescript`, etc.
+다음 문서에서 상세한 번역 지침을 확인하세요:
 
-### Component Usage
-
-Preserve all component syntax:
-
-```jsx
-import { Callout } from 'nextra/components'
-
-<Callout type="info">
-  Translated content here
-</Callout>
-```
-
-### Links
-
-- **Keep relative paths**: Maintain relative paths in links across all languages
-- **Translate link text**: Only the link text should be translated, not the path
-
-```markdown
-# Korean (source)
-[Workflow](user-manual/workflow)
-
-# English (translated)
-[Workflow](user-manual/workflow)
-
-# Japanese (translated)
-[ワークフロー](user-manual/workflow)
-```
-
-### Images
-
-- **Image Location**: Images are stored in `public/` directory
-- **Image Path**: Determined by the MDX file path
-  - For `src/content/ko/path/filename.mdx`, images are in `public/path/filename/`
-- **Image Names**: Typically `screenshot-yyyymmdd-hhmmss.png` or `image-yyyymmdd-hhmmss.png`
-- **Shared Across Languages**: Images are language-agnostic and shared across all language versions
-- **No Image Replacement**: Do not replace images when translating; use the same images from Korean source
-
-**Translate only alt text and captions**:
-
-```jsx
-# Korean (source)
-<figure>
-  ![Workflow 메뉴](/user-manual/workflow/screenshot-20240902-172212.png)
-  <figcaption>
-    Workflow 메뉴
-  </figcaption>
-</figure>
-
-# English (translated)
-<figure>
-  ![Workflow Menu](/user-manual/workflow/screenshot-20240902-172212.png)
-  <figcaption>
-    Workflow Menu
-  </figcaption>
-</figure>
-
-# Japanese (translated)
-<figure>
-  ![Workflowメニュー](/user-manual/workflow/screenshot-20240902-172212.png)
-  <figcaption>
-    Workflowメニュー
-  </figcaption>
-</figure>
-```
-
-## Language-Specific Guidelines
-
-### Korean (ko) - Source Language
-
-- This is the original source content
-- Use appropriate honorifics when addressing users
-- Technical terms may be kept in English if commonly used
-- Maintain professional tone
-- Use proper spacing and punctuation
-
-### English (en) - Translated Language
-
-- **Standard English**: Use standard English
-- **Formal but Friendly**: Use formal expressions appropriate for a software company providing high-quality technical support
-  - Prefer friendly conversational tone over stiff and dry style
-  - Avoid casual, everyday colloquial expressions or light tone used among friends
-- **Clear and Concise**: Professional but accessible
-- **Use Active Voice**: When possible
-- **Technical Terms**: Should be clearly defined
-
-### Japanese (ja) - Translated Language
-
-- **Standard Japanese**: Use standard Japanese
-- **Formal but Friendly**: Use formal expressions appropriate for a software company providing high-quality technical support
-  - Prefer friendly conversational tone over stiff and dry style
-  - Avoid casual, everyday colloquial expressions or light tone used among friends
-- **Use Appropriate Keigo**: Honorific language when addressing users
-- **Technical Terms**: May be kept in English or use katakana
-- **Maintain Professional Tone**: Follow Japanese typography rules
-
-## Critical Translation Rules
-
-### Markdown Formatting
-
-- **Preserve Formatting**: Maintain all markdown expressions, line breaks, and formatting from Korean source
-- **Keep Structure**: Tables, lists, emphasis (e.g., `**text**`) should match Korean source exactly
-- **Keep Emphasis Markers**: Maintain `**Example Phrase**` format; do not replace with `<strong>`
-- **Fix Inconsistencies**: If English/Japanese translation has different markdown formatting than Korean source, fix it to match
-
-### HTML Encoding
-
-- **Do NOT Decode**: Do not arbitrarily decode properly escaped strings from Korean source
-- **Keep HTML Entities**: Maintain HTML-encoded strings as-is
-  - Example: Keep `&lt;token&gt;` as-is, do not convert to `<token>`
-  - Example: Keep `{querypie url}` with backquote, do not remove it
-
-### Document Structure
-
-- **Same Path Structure**: File paths and names must be identical across languages
-  - `src/content/ko/path/filename.mdx` → `src/content/en/path/filename.mdx`
-  - `src/content/ko/path/filename.mdx` → `src/content/ja/path/filename.mdx`
-- **Relative Links**: Maintain relative paths in links
-
-## Common Translation Patterns
-
-### UI Elements
-
-- Buttons, menus, and UI elements: Translate to match the actual UI language
-- If UI is in English, may keep English terms in other languages
-
-### Technical Terms
-
-- Database terms: May keep English (e.g., "SQL", "Query")
-- Product names: Keep as-is (e.g., "QueryPie")
-- Feature names: Translate appropriately
-
-### Navigation Terms
-
-- Menu items: Translate to match user interface
-- Section headers: Translate fully
-- Breadcrumbs: Translate appropriately
-
-## Quality Checklist
-
-Before completing a translation:
-
-- [ ] Korean source is correctly identified and used
-- [ ] All content is translated from Korean (no Korean text left untranslated in en/ja versions)
-- [ ] Frontmatter title is translated
-- [ ] Code blocks are preserved (not translated)
-- [ ] Image alt text and captions are translated
-- [ ] Image paths are correct (based on MDX file path)
-- [ ] Links use relative paths and are maintained
-- [ ] Technical terms are handled consistently
-- [ ] Markdown formatting matches Korean source exactly
-- [ ] HTML-encoded strings are preserved (e.g., `&lt;`, `&gt;`)
-- [ ] Structure matches Korean source (same file paths and names)
-- [ ] File renders correctly in local dev server
-- [ ] `npm run build` succeeds without errors
-
-## Tools and Resources
-
-### Translation Files
-
-- Korean title translations: `confluence-mdx/etc/korean-titles-translations.txt`
-- Used by `translate_titles.py` script
-
-### Testing Translations
-
-```bash
-# Run local dev server
-npm run dev
-
-# Navigate to each language version
-# http://localhost:3000/en/...
-# http://localhost:3000/ja/...
-# http://localhost:3000/ko/...
-```
-
-## Best Practices
-
-1. **Review Korean Source**: Always review the Korean source (`src/content/ko/`) to understand context
-2. **Maintain Structure**: Keep the same heading hierarchy and organization as Korean source
-3. **Preserve Formatting**: Don't change markdown syntax or component usage - match Korean source exactly
-4. **Build Verification**: Always run `npm run build` after translation to verify MDX files build correctly
-5. **Test Locally**: Test translated content in the dev server (`npm run dev`)
-6. **Consistency**: Use the same translation for repeated terms
-7. **Formal but Friendly Tone**: Use formal expressions appropriate for enterprise software documentation, but prefer friendly conversational tone
-8. **Code Comments**: Keep code comments in English (project preference)
-9. **Batch Processing**: Work on 50 documents at a time, then request review
-10. **Report Issues**: Report typos, grammar errors, or inappropriate expressions found in Korean source
-
-## Target Audience
-
-This documentation is provided by QueryPie, a software development company, to:
-- End users
-- Customer company employees
-- Security officers
-- Customer engineers
-- Business partner engineers
-
-Maintain a tone appropriate for enterprise software documentation with high-quality technical support.
+- **번역 상세 지침**: [docs/translation.md](/docs/translation.md)
+- **Skeleton MDX 비교**: [docs/translation.md](/docs/translation.md)의 "Skeleton MDX 를 비교하기" 섹션
+- **MDX 스켈레톤 비교 Skill**: [.claude/skills/mdx-skeleton-comparison.md](/docs/../.claude/skills/mdx-skeleton-comparison.md)
 
