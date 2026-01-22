@@ -21,7 +21,7 @@ from datetime import datetime
 from itertools import chain
 from pathlib import Path
 from typing import Optional, Dict, List, Any, TypedDict
-from urllib.parse import unquote
+from urllib.parse import unquote, urlparse
 
 import yaml
 from bs4 import BeautifulSoup, Tag, NavigableString
@@ -168,6 +168,94 @@ def confluence_url():
         return f'https://querypie.atlassian.net/wiki/spaces/QM/pages/{page_id}/'
     else:
         return 'https://querypie.atlassian.net/wiki/spaces/QM/overview'
+
+
+def parse_confluence_url(href: str) -> Optional[Dict[str, str]]:
+    """
+    Parse a Confluence URL and extract page_id and anchor fragment.
+
+    Args:
+        href: The URL to parse (e.g., https://querypie.atlassian.net/wiki/spaces/QM/pages/1454342158/Identity+Providers#anchor)
+
+    Returns:
+        Dictionary with 'page_id' and 'anchor' keys, or None if not a Confluence URL
+    """
+    if not href:
+        return None
+
+    # Check if it's a Confluence URL
+    if 'atlassian.net/wiki/spaces/' not in href:
+        return None
+
+    parsed = urlparse(href)
+    path = parsed.path
+    fragment = parsed.fragment  # The anchor part after #
+
+    # Extract page_id from path: /wiki/spaces/QM/pages/{page_id}/...
+    match = re.search(r'/pages/(\d+)/', path)
+    if not match:
+        return None
+
+    page_id = match.group(1)
+
+    return {
+        'page_id': page_id,
+        'anchor': fragment if fragment else ''
+    }
+
+
+def convert_confluence_url(href: str) -> tuple[str, Optional[str]]:
+    """
+    Convert a Confluence URL to an internal markdown link.
+
+    Args:
+        href: The URL to convert
+
+    Returns:
+        tuple: (converted_href, readable_link_text)
+               readable_link_text is provided when the original link text (URL) should be replaced
+               Format:
+               - Same page segment: "#섹션 제목"
+               - Different page segment: "문서 제목#섹션 제목" or "Unknown Title#섹션 제목"
+               - Different page (no segment): "문서 제목" or "Unknown Title"
+    """
+    parsed = parse_confluence_url(href)
+    if not parsed:
+        return href, None
+
+    current_page_id = GLOBAL_PAGE_V1.get('id', '') if GLOBAL_PAGE_V1 else ''
+    target_page_id = parsed['page_id']
+    anchor = parsed['anchor']
+
+    if target_page_id == current_page_id and anchor:
+        # Same page segment link - convert to internal anchor
+        decoded_anchor = unquote(anchor).lower()
+        section_title = unquote(anchor).replace('-', ' ')
+        readable_text = f'#{section_title}'
+        logging.debug(f"Converted same-page segment link to #{decoded_anchor}")
+        return f'#{decoded_anchor}', readable_text
+
+    if anchor:
+        # Different page with anchor
+        target_page = PAGES_BY_ID.get(target_page_id)
+        decoded_anchor = unquote(anchor).lower()
+        section_title = unquote(anchor).replace('-', ' ')
+        if target_page:
+            target_path = relative_path_to_titled_page(target_page.get('title', ''))
+            doc_title = target_page.get('title', 'Unknown Title')
+            readable_text = f'{doc_title}#{section_title}'
+            return f'{target_path}#{decoded_anchor}', readable_text
+        logging.warning(f"Target page {target_page_id} not found in pages dictionary")
+        readable_text = f'Unknown Title#{section_title}'
+        return href, readable_text
+
+    # Different page without anchor
+    target_page = PAGES_BY_ID.get(target_page_id)
+    if target_page:
+        return relative_path_to_titled_page(target_page.get('title', '')), target_page.get('title')
+    logging.warning(f"Target page {target_page_id} not found in pages dictionary")
+    return href, 'Unknown Title'
+
 
 def clean_text(text: Optional[str]) -> Optional[str]:
     """Clean text by removing hidden characters"""
@@ -730,15 +818,11 @@ class SingleLineParser:
             # <br/> is a line break. Just keep using <br/>.
             self.markdown_lines.append("<br/>")
         elif node.name in ['a']:
-            href = node.get('href', '#')
-            self.markdown_lines.append("[")
-            for child in node.children:
-                self.markdown_lines.append(SingleLineParser(child).as_markdown)
-            self.markdown_lines.append(f"]({href})")
-            if "chequer.atlassian.net" in href or "querypie.atlassian.net" in href:
-                logging.warning(f"SingleLineParser: TODO: {print_node_with_properties(node)} from {ancestors(node)} in {confluence_url()}")
-            else:
-                logging.debug(f"SingleLineParser: {print_node_with_properties(node)} from {ancestors(node)} in {confluence_url()}")
+            href, readable_anchor_text = convert_confluence_url(node.get('href', '#'))
+            link_text = ''.join(SingleLineParser(child).as_markdown for child in node.children)
+            if readable_anchor_text and link_text.startswith('http'):
+                link_text = readable_anchor_text
+            self.markdown_lines.append(f"[{link_text}]({href})")
         elif node.name in ['ac:link']:
             """
             <ac:link>
