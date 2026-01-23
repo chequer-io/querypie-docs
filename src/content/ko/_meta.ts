@@ -2,7 +2,7 @@ export default {
   index: {
     display: 'hidden',
   },
-  'querypie-overview': {
+  'overview': {
     type: 'page',
     title: 'QueryPie Overview',
   },
