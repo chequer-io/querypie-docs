@@ -143,6 +143,7 @@ PAGES_BY_TITLE: PagesDict = {}
 PAGES_BY_ID: PagesDict = {}
 GLOBAL_PAGE_V1: Optional[PageV1] = None
 GLOBAL_ATTACHMENTS: List[Attachment] = []
+GLOBAL_LINK_MAPPING: Dict[str, str] = {}  # Mapping of link text -> pageId from page.v1.yaml
 
 # Hidden characters for text cleaning
 HIDDEN_CHARACTERS = {
@@ -422,6 +423,92 @@ def load_page_v1_yaml(yaml_path: str) -> Optional[PageV1]:
     except Exception as e:
         logging.error(f"Error loading page.v1.yaml from {yaml_path}: {e}")
         return None
+
+
+def build_link_mapping(page_v1: Optional[PageV1]) -> Dict[str, str]:
+    """
+    Build a mapping of link text -> pageId from page.v1.yaml body.view HTML
+
+    This function parses the rendered HTML in page.v1.yaml's body.view section
+    to extract links with their pageIds. This allows us to generate accurate
+    Confluence URLs for external links (links to pages outside the current conversion scope).
+
+    Args:
+        page_v1 (Optional[PageV1]): The page.v1.yaml data structure
+
+    Returns:
+        Dict[str, str]: Mapping of link text to pageId
+    """
+    link_map = {}
+
+    if not page_v1:
+        logging.warning("No page.v1 data available to build link mapping")
+        return link_map
+
+    try:
+        view_html = page_v1.get('body', {}).get('view', {}).get('value', '')
+
+        if not view_html:
+            logging.warning("No body.view HTML found in page.v1.yaml")
+            return link_map
+
+        soup = BeautifulSoup(view_html, 'html.parser')
+
+        # Find all links with data-linked-resource-id attribute
+        for link in soup.find_all('a', {'data-linked-resource-id': True}):
+            text = link.get_text()
+            page_id = link.get('data-linked-resource-id', '')
+            resource_type = link.get('data-linked-resource-type', '')
+
+            if text and page_id and resource_type == 'page':
+                link_map[text] = page_id
+                logging.debug(f"Link mapping: '{text}' -> pageId {page_id}")
+
+        logging.info(f"Built link mapping with {len(link_map)} entries")
+
+    except Exception as e:
+        logging.error(f"Error building link mapping from page.v1.yaml: {e}")
+
+    return link_map
+
+
+def resolve_external_link(link_text: str, space_key: str, target_title: str) -> str:
+    """
+    Resolve external Confluence link URL using pageId from global link mapping
+
+    This function attempts to generate an accurate Confluence URL for external links
+    (links to pages outside the current conversion scope) by looking up the pageId
+    from GLOBAL_LINK_MAPPING. If pageId is not found, it falls back to space overview
+    or error link.
+
+    Args:
+        link_text (str): The link body text to match in GLOBAL_LINK_MAPPING
+        space_key (str): The Confluence space key
+        target_title (str): The target page title (for logging purposes)
+
+    Returns:
+        str: The resolved URL in one of these formats:
+            - With pageId: https://querypie.atlassian.net/wiki/spaces/{space_key}/pages/{page_id}
+            - Without pageId but with space_key: https://querypie.atlassian.net/wiki/spaces/{space_key}/overview
+            - Without space_key: #link-error
+    """
+    page_id = GLOBAL_LINK_MAPPING.get(link_text)
+
+    if page_id and space_key:
+        # Generate accurate URL with pageId
+        href = f'https://querypie.atlassian.net/wiki/spaces/{space_key}/pages/{page_id}'
+        logging.info(f"Generated external Confluence link with pageId for '{link_text}' (title: '{target_title}'): {href}")
+        return href
+    elif space_key:
+        # Fallback to space overview URL if no pageId found
+        href = f'https://querypie.atlassian.net/wiki/spaces/{space_key}/overview'
+        logging.warning(f"No pageId found for '{link_text}', using space overview for '{target_title}' in space '{space_key}': {href}")
+        return href
+    else:
+        # No space key - show simple error message
+        href = '#link-error'
+        logging.warning(f"No space key found for external link to '{target_title}', using error anchor: {href}")
+        return href
 
 
 def backtick_curly_braces(text):
@@ -841,64 +928,9 @@ class SingleLineParser:
                 link_text = readable_anchor_text
             self.markdown_lines.append(f"[{link_text}]({href})")
         elif node.name in ['ac:link']:
-            """
-            <ac:link>
-                <ri:page ri:content-title="Slack DM - Workflow 알림 유형" ri:version-at-save="7"/>
-                <ac:link-body>Slack DM 개인 알림 사용하기</ac:link-body>
-            </ac:link>
-            <ac:link ac:card-appearance="inline" ac:anchor="QueryPie-Web%EC%97%90-%EB%A1%9C%EA%B7%B8%EC%9D%B8%ED%95%98%EA%B8%B0">
-                <ri:page ri:content-title="My Dashboard" ri:version-at-save="12"/>
-                <ac:link-body>My Dashboard</ac:link-body>
-            </ac:link>
-            """
-            link_body = '(ERROR: Link body not found)'
-            anchor = node.get('anchor', '')
-            if anchor:
-                decoded_anchor = ' | ' + unquote(anchor)
-                lowercased_fragment = '#' + anchor.lower()
-            else:
-                decoded_anchor = ''
-                lowercased_fragment = ''
-
-            href = '#'
-            ri_page = None
-            ri_space = None
-            for child in node.children:
-                if isinstance(child, Tag) and child.name == 'ac:link-body':
-                    link_body = SingleLineParser(child).as_markdown
-                if isinstance(child, Tag) and child.name == 'ri:space':
-                    # Handle space links: <ac:link><ri:space ri:space-key="QCP" /></ac:link>
-                    ri_space = child
-                    space_key = child.get('space-key', '')
-                    if space_key:
-                        href = f'https://querypie.atlassian.net/wiki/spaces/{space_key}/overview'
-                        logging.info(f"Generated Confluence space overview link for space '{space_key}': {href}")
-                    else:
-                        href = '#link-error'
-                        logging.warning(f"No space key found in ri:space tag, using error anchor: {href}")
-                if isinstance(child, Tag) and child.name == 'ri:page':
-                    ri_page = child
-                    target_title = child.get('content-title', '')
-                    space_key = child.get('space-key', '')
-
-                    # Check if the target page is in pages.yaml
-                    target_page = PAGES_BY_TITLE.get(target_title)
-
-                    if target_page:
-                        # Internal link - use relative path
-                        href = relative_path_to_titled_page(target_title)
-                    else:
-                        # External link - generate Confluence URL
-                        if space_key:
-                            # Use space overview URL since we don't have page_id
-                            href = f'https://querypie.atlassian.net/wiki/spaces/{space_key}/overview'
-                            logging.info(f"Generated external Confluence space link for title '{target_title}' in space '{space_key}': {href}")
-                        else:
-                            # No space key - show simple error message
-                            href = '#link-error'
-                            logging.warning(f"No space key found for external link to '{target_title}', using error anchor: {href}")
-
-            self.markdown_lines.append(f'[{link_body}{decoded_anchor}]({href}{lowercased_fragment})')
+            # Convert ac:link node to markdown link
+            markdown_link = self.convert_ac_link(node)
+            self.markdown_lines.append(markdown_link)
         elif node.name in ['ri:page']:
             content_title = node.get('content-title', '#')
             self.markdown_lines.append(content_title)
@@ -1024,6 +1056,119 @@ class SingleLineParser:
         for child in node.children:
             markdown.append(SingleLineParser(child).as_markdown)
         return ''.join(markdown)
+
+    def convert_ac_link(self, node: Tag) -> str:
+        """
+        Convert ac:link node to markdown link format
+
+        Handles various types of Confluence links and generates appropriate markdown output:
+
+        1. Internal Page Link (target page in pages.yaml):
+           XHTML:
+               <ac:link>
+                   <ri:page ri:content-title="User Guide"/>
+                   <ac:link-body>User Guide</ac:link-body>
+               </ac:link>
+           Output:
+               [User Guide](../../user-guide)
+
+        2. External Page Link with pageId (target page in page.v1.yaml link mapping):
+           XHTML:
+               <ac:link>
+                   <ri:page ri:space-key="QCP" ri:content-title="QueryPie Architecture (KO)"/>
+                   <ac:link-body>QueryPie Architecture</ac:link-body>
+               </ac:link>
+           Output:
+               [QueryPie Architecture](https://querypie.atlassian.net/wiki/spaces/QCP/pages/400064797)
+
+        3. External Page Link without pageId (fallback to space overview):
+           XHTML:
+               <ac:link>
+                   <ri:page ri:space-key="QCP" ri:content-title="Unknown Page"/>
+                   <ac:link-body>Unknown Page</ac:link-body>
+               </ac:link>
+           Output:
+               [Unknown Page](https://querypie.atlassian.net/wiki/spaces/QCP/overview)
+
+        4. Space Link:
+           XHTML:
+               <ac:link>
+                   <ri:space ri:space-key="QCP"/>
+                   <ac:link-body>Confluence Space</ac:link-body>
+               </ac:link>
+           Output:
+               [Confluence Space](https://querypie.atlassian.net/wiki/spaces/QCP/overview)
+
+        5. Link with Anchor Fragment:
+           XHTML:
+               <ac:link ac:anchor="section-name">
+                   <ri:page ri:content-title="My Dashboard"/>
+                   <ac:link-body>My Dashboard</ac:link-body>
+               </ac:link>
+           Output:
+               [My Dashboard | section-name](../../my-dashboard#section-name)
+
+        6. Error Case (no space key):
+           XHTML:
+               <ac:link>
+                   <ri:page ri:content-title="Missing Page"/>
+                   <ac:link-body>Missing Page</ac:link-body>
+               </ac:link>
+           Output:
+               [Missing Page](#link-error)
+
+        Args:
+            node (Tag): BeautifulSoup Tag object representing ac:link node
+
+        Returns:
+            str: Markdown link in format [link_body](href) or [link_body | anchor](href#fragment)
+        """
+        link_body = '(ERROR: Link body not found)'
+        anchor = node.get('anchor', '')
+
+        # Process anchor fragment
+        if anchor:
+            decoded_anchor = ' | ' + unquote(anchor)
+            lowercased_fragment = '#' + anchor.lower()
+        else:
+            decoded_anchor = ''
+            lowercased_fragment = ''
+
+        href = '#'
+
+        # Process child nodes to extract link body and determine href
+        for child in node.children:
+            if isinstance(child, Tag) and child.name == 'ac:link-body':
+                link_body = SingleLineParser(child).as_markdown
+
+            elif isinstance(child, Tag) and child.name == 'ri:space':
+                # Handle space links: <ac:link><ri:space ri:space-key="QCP" /></ac:link>
+                space_key = child.get('space-key', '')
+                if space_key:
+                    href = f'https://querypie.atlassian.net/wiki/spaces/{space_key}/overview'
+                    logging.info(f"Generated Confluence space overview link for space '{space_key}': {href}")
+                else:
+                    href = '#link-error'
+                    logging.warning(f"No space key found in ri:space tag, using error anchor: {href}")
+
+            elif isinstance(child, Tag) and child.name == 'ri:page':
+                target_title = child.get('content-title', '')
+                space_key = child.get('space-key', '')
+
+                # Check if the target page is in pages.yaml
+                target_page = PAGES_BY_TITLE.get(target_title)
+
+                if target_page:
+                    # Internal link - use relative path
+                    href = relative_path_to_titled_page(target_title)
+                else:
+                    # External link - resolve using pageId from link mapping
+                    # Get link_body explicitly to ensure we have the correct text for lookup
+                    link_body_node = node.find('ac:link-body')
+                    current_link_body = SingleLineParser(link_body_node).as_markdown if link_body_node else link_body
+                    href = resolve_external_link(current_link_body, space_key, target_title)
+
+        return f'[{link_body}{decoded_anchor}]({href}{lowercased_fragment})'
 
     def convert_inline_image(self, node):
         """
@@ -2080,6 +2225,10 @@ def main():
         # Load page.v1.yaml from the same directory as the input file
         page_v1: Optional[PageV1] = load_page_v1_yaml(os.path.join(input_dir, 'page.v1.yaml'))
         set_page_v1(page_v1)
+
+        # Build link mapping from page.v1.yaml for external link pageId resolution
+        global GLOBAL_LINK_MAPPING
+        GLOBAL_LINK_MAPPING = build_link_mapping(page_v1)
 
         converter = ConfluenceToMarkdown(html_content)
         converter.load_attachments(input_dir, output_dir, args.public_dir)
