@@ -153,6 +153,7 @@ Podman 으로 Rootless Mode 구성하기 | Configuring Rootless Mode with Podman
 설치 가이드 - setup.v2.sh | Installation Guide - setup.v2.sh
 setup.sh, setup.v2.sh 비교 | Comparison of setup.sh and setup.v2.sh
 AWS EKS 환경에서 설치하기 | Installing on AWS EKS
+설치 후 초기 설정 | Post Installation Setup
 시스템 아키텍처와 네트워크 접근제어 | System Architecture and Network Access Control
 컨테이너 환경변수 | Container Environment Variables
 DB_MAX_CONNECTION_SIZE 최적화 | Optimizing DB_MAX_CONNECTION_SIZE
