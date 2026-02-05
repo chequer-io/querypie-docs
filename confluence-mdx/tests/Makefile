@@ -1,130 +1,47 @@
 # Makefile for testing confluence_xhtml_to_markdown.py
 
 # Variables
-# Activate virtualenv located at project root: ../../venv
-VENV = source ../venv/bin/activate
-# Converter script now lives under confluence-mdx/bin/
-SCRIPT = ../bin/confluence_xhtml_to_markdown.py
-# Skeleton converter script
-SKELETON_SCRIPT = ../bin/mdx_to_skeleton.py
-# Testcases live under this directory
-TEST_DIR = testcases
-DIFF = diff -u
+TEST_SCRIPT = ./run-tests.sh
+VERBOSE_FLAG = $(if $(VERBOSE),--verbose,)
 
 # Default target
 .PHONY: all
-all: test
-
-# Run all tests
-.PHONY: test
-test: test-xhtml
+all: test-xhtml test-skeleton
+	@echo ""
 	@echo "All tests completed."
 
 # Run XHTML tests only
 .PHONY: test-xhtml
 test-xhtml:
-	@echo "Running XHTML tests..."
-	@for test_case in $$(find $(TEST_DIR) -mindepth 1 -maxdepth 1 -type d); do \
-		test_id=$$(basename $$test_case); \
-		if [ -f "$(TEST_DIR)/$$test_id/page.xhtml" ]; then \
-			echo "Testing case: $$test_id (XHTML)"; \
-			echo "  Processing page.xhtml"; \
-			$(VENV) && \
-			python $(SCRIPT) --log-level warning \
-				$(TEST_DIR)/$$test_id/page.xhtml \
-				$(TEST_DIR)/$$test_id/output.mdx \
-				--public-dir=$(TEST_DIR) \
-				--attachment-dir=/$$test_id/output; \
-			$(DIFF) $(TEST_DIR)/$$test_id/expected.mdx $(TEST_DIR)/$$test_id/output.mdx || echo "Test $$test_id (XHTML) failed"; \
-		fi; \
-	done
+	@$(TEST_SCRIPT) --type xhtml --log-level warning $(VERBOSE_FLAG)
 
-# Run a specific test
-.PHONY: test-one
-test-one:
+# Run a specific XHTML test
+.PHONY: test-xhtml-one
+test-xhtml-one:
 	@if [ -z "$(TEST_ID)" ]; then \
-		echo "Usage: make test-one TEST_ID=<test_id>"; \
+		echo "Usage: make test-xhtml-one TEST_ID=<test_id>"; \
 		exit 1; \
 	fi
-	@echo "Testing case: $(TEST_ID) (XHTML)"
-	@if [ -f "$(TEST_DIR)/$(TEST_ID)/page.xhtml" ]; then \
-		echo "  Processing page.xhtml"; \
-		$(VENV) && \
-		python $(SCRIPT) --log-level warning \
-			$(TEST_DIR)/$(TEST_ID)/page.xhtml \
-			$(TEST_DIR)/$(TEST_ID)/output.mdx \
-			--public-dir=$(TEST_DIR) \
-			--attachment-dir=/$(TEST_ID)/output; \
-		$(DIFF) $(TEST_DIR)/$(TEST_ID)/expected.mdx $(TEST_DIR)/$(TEST_ID)/output.mdx || echo "Test $(TEST_ID) (XHTML) failed"; \
-	else \
-		echo "  No page.xhtml found for test case $(TEST_ID)"; \
-	fi
-
-# Run tests with debug log level
-.PHONY: debug
-debug: debug-xhtml
-	@echo "All debug tests completed."
+	@$(TEST_SCRIPT) --type xhtml --log-level warning --test-id $(TEST_ID) $(VERBOSE_FLAG)
 
 # Run XHTML tests with debug log level
 .PHONY: debug-xhtml
 debug-xhtml:
-	@echo "Running XHTML tests with debug log level..."
-	@for test_case in $$(find $(TEST_DIR) -mindepth 1 -maxdepth 1 -type d); do \
-		test_id=$$(basename $$test_case); \
-		if [ -f "$(TEST_DIR)/$$test_id/page.xhtml" ]; then \
-			echo "Testing case: $$test_id (XHTML)"; \
-			echo "  Processing page.xhtml"; \
-			$(VENV) && \
-			python $(SCRIPT) --log-level debug \
-			 	$(TEST_DIR)/$$test_id/page.xhtml \
-			 	$(TEST_DIR)/$$test_id/output.mdx \
-			 	--public-dir=$(TEST_DIR) \
-			 	--attachment-dir=/$$test_id/output; \
-			$(DIFF) $(TEST_DIR)/$$test_id/expected.mdx $(TEST_DIR)/$$test_id/output.mdx || echo "Test $$test_id (XHTML) failed"; \
-		fi; \
-	done
+	@$(TEST_SCRIPT) --type xhtml --log-level debug $(VERBOSE_FLAG)
 
-# Run a specific test with debug log level
-.PHONY: debug-one
-debug-one:
+# Run a specific XHTML test with debug log level
+.PHONY: debug-xhtml-one
+debug-xhtml-one:
 	@if [ -z "$(TEST_ID)" ]; then \
-		echo "Usage: make debug-one TEST_ID=<test_id>"; \
+		echo "Usage: make debug-xhtml-one TEST_ID=<test_id>"; \
 		exit 1; \
 	fi
-	@echo "Testing case: $(TEST_ID) (XHTML) with debug log level"
-	@if [ -f "$(TEST_DIR)/$(TEST_ID)/page.xhtml" ]; then \
-		echo "  Processing page.xhtml"; \
-		$(VENV) && \
-		python $(SCRIPT) --log-level debug \
-			$(TEST_DIR)/$(TEST_ID)/page.xhtml \
-			$(TEST_DIR)/$(TEST_ID)/output.mdx \
-			--public-dir=$(TEST_DIR) \
-			--attachment-dir=/$(TEST_ID)/output; \
-		$(DIFF) $(TEST_DIR)/$(TEST_ID)/expected.mdx $(TEST_DIR)/$(TEST_ID)/output.mdx || echo "Test $(TEST_ID) (XHTML) failed"; \
-	else \
-		echo "  No page.xhtml found for test case $(TEST_ID)"; \
-	fi
+	@$(TEST_SCRIPT) --type xhtml --log-level debug --test-id $(TEST_ID) $(VERBOSE_FLAG)
 
 # Run skeleton tests
 .PHONY: test-skeleton
 test-skeleton:
-	@echo "Running skeleton tests..."
-	@for test_case in $$(find $(TEST_DIR) -mindepth 1 -maxdepth 1 -type d); do \
-		test_id=$$(basename $$test_case); \
-		if [ -f "$(TEST_DIR)/$$test_id/output.mdx" ]; then \
-			echo "Testing case: $$test_id (Skeleton)"; \
-			echo "  Converting output.mdx to output.skel.mdx"; \
-			$(VENV) && \
-			python $(SKELETON_SCRIPT) $(TEST_DIR)/$$test_id/output.mdx; \
-			if [ -f "$(TEST_DIR)/$$test_id/expected.skel.mdx" ]; then \
-				$(DIFF) $(TEST_DIR)/$$test_id/expected.skel.mdx $(TEST_DIR)/$$test_id/output.skel.mdx || echo "Test $$test_id (Skeleton) failed"; \
-			else \
-				echo "  Warning: expected.skel.mdx not found for test case $$test_id"; \
-			fi; \
-		else \
-			echo "  Skipping $$test_id: output.mdx not found"; \
-		fi; \
-	done
+	@$(TEST_SCRIPT) --type skeleton $(VERBOSE_FLAG)
 
 # Run a specific skeleton test
 .PHONY: test-skeleton-one
@@ -133,37 +50,36 @@ test-skeleton-one:
 		echo "Usage: make test-skeleton-one TEST_ID=<test_id>"; \
 		exit 1; \
 	fi
-	@echo "Testing case: $(TEST_ID) (Skeleton)"
-	@if [ -f "$(TEST_DIR)/$(TEST_ID)/output.mdx" ]; then \
-		echo "  Converting output.mdx to output.skel.mdx"; \
-		$(VENV) && \
-		python $(SKELETON_SCRIPT) $(TEST_DIR)/$(TEST_ID)/output.mdx; \
-		if [ -f "$(TEST_DIR)/$(TEST_ID)/expected.skel.mdx" ]; then \
-			$(DIFF) $(TEST_DIR)/$(TEST_ID)/expected.skel.mdx $(TEST_DIR)/$(TEST_ID)/output.skel.mdx || echo "Test $(TEST_ID) (Skeleton) failed"; \
-		else \
-			echo "  Warning: expected.skel.mdx not found for test case $(TEST_ID)"; \
-		fi; \
-	else \
-		echo "  No output.mdx found for test case $(TEST_ID)"; \
-	fi
+	@$(TEST_SCRIPT) --type skeleton --test-id $(TEST_ID) $(VERBOSE_FLAG)
 
 # Clean output files
 .PHONY: clean
 clean:
 	@echo "Cleaning output files..."
-	@find $(TEST_DIR) -name "output.mdx" -type f -delete
-	@find $(TEST_DIR) -name "output.skel.mdx" -type f -delete
+	@find testcases -name "output.mdx" -type f -delete
+	@find testcases -name "output.skel.mdx" -type f -delete
+	@find testcases -name "_meta.ts" -path "*/output/*" -type f -delete
 
 # Help
 .PHONY: help
 help:
 	@echo "Available targets:"
-	@echo "  all                - Run all tests (default)"
-	@echo "  test               - Run all tests (XHTML only)"
-	@echo "  test-one           - Run a specific test for XHTML, e.g., make test-one TEST_ID=568918170"
-	@echo "  test-skeleton      - Run all skeleton tests (converts output.mdx to output.skel.mdx and compares with expected.skel.mdx)"
-	@echo "  test-skeleton-one  - Run a specific skeleton test, e.g., make test-skeleton-one TEST_ID=568918170"
-	@echo "  debug              - Run all tests with debug log level (XHTML only)"
-	@echo "  debug-one          - Run a specific test with debug log level for XHTML, e.g., make debug-one TEST_ID=568918170"
-	@echo "  clean              - Remove all output files (output.mdx and output.skel.mdx)"
+	@echo "  all                - Run all tests: XHTML + Skeleton (default)"
+	@echo "  test-xhtml         - Run XHTML tests"
+	@echo "  test-xhtml-one     - Run a specific XHTML test"
+	@echo "  test-skeleton      - Run Skeleton tests"
+	@echo "  test-skeleton-one  - Run a specific Skeleton test"
+	@echo "  debug-xhtml        - Run XHTML tests with debug log level"
+	@echo "  debug-xhtml-one    - Run a specific XHTML test with debug log level"
+	@echo "  clean              - Remove all output files"
 	@echo "  help               - Show this help message"
+	@echo ""
+	@echo "Options:"
+	@echo "  TEST_ID=<id>       - Specify test case ID for *-one targets"
+	@echo "  VERBOSE=1          - Show executed commands and converter output"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make                                           # Run all tests"
+	@echo "  make test-xhtml VERBOSE=1                      # Run XHTML tests with verbose"
+	@echo "  make test-xhtml-one TEST_ID=568918170          # Run specific XHTML test"
+	@echo "  make debug-xhtml-one TEST_ID=568918170 VERBOSE=1"
