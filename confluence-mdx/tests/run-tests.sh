@@ -24,7 +24,10 @@ BIN_DIR="../bin"
 VENV_DIR="../venv"
 
 CONVERTER_SCRIPT="${BIN_DIR}/confluence_xhtml_to_markdown.py"
-SKELETON_SCRIPT="${BIN_DIR}/mdx_to_skeleton.py"
+SKELETON_SCRIPT="${BIN_DIR}/skeleton/cli.py"
+
+# Ensure bin/ is on PYTHONPATH so skeleton package imports resolve
+export PYTHONPATH="${BIN_DIR}:${PYTHONPATH:-}"
 
 # Default options
 TEST_TYPE="xhtml"
