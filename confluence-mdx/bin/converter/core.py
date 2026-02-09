@@ -1,78 +1,57 @@
-#!/usr/bin/env python3
 """
-Confluence XHTML to Markdown Converter
+Core converter classes for Confluence XHTML to Markdown conversion.
 
-This script converts Confluence XHTML export to clean Markdown,
-handling special cases like:
-- CDATA sections in code blocks
-- Tables with colspan and rowspan attributes
-- Structured macros and other Confluence-specific elements
+Contains the main parser and converter classes:
+- Attachment: handles attachment file references and copying
+- SingleLineParser: converts inline/single-line XHTML nodes to Markdown
+- MultiLineParser: converts block-level XHTML nodes to Markdown
+- TableToNativeMarkdown: converts simple tables to native Markdown tables
+- TableToHtmlTable: converts complex tables to HTML table markup
+- StructuredMacroToCallout: converts Confluence structured macros to Callout components
+- AdfExtensionToCallout: converts ADF extension panels to Callout components
+- ConfluenceToMarkdown: top-level converter orchestrating the full conversion
 """
 
-import argparse
 import filecmp
 import logging
 import os
-import re
 import shutil
-import sys
 import unicodedata
-from datetime import datetime
 from itertools import chain
-from pathlib import Path
-from typing import Optional, Dict, List, Any, TypedDict
-from urllib.parse import unquote, urlparse
+from typing import Optional, List
+from urllib.parse import unquote
 
-import yaml
 from bs4 import BeautifulSoup, Tag, NavigableString
 from bs4.element import CData
 
-from text_utils import clean_text
+import converter.context as ctx
+from converter.context import (
+    PAGES_BY_TITLE,
+    CONFLUENCE_COLOR_TO_BADGE_COLOR, EMOJI_AVAILABLE,
+    confluence_url, parse_confluence_url, convert_confluence_url,
+    get_page_v1, get_attachments, set_page_v1, set_attachments,
+    relative_path_to_titled_page, resolve_external_link,
+    backtick_curly_braces, navigable_string_as_markdown, split_into_sentences,
+    ancestors, print_node_with_properties, get_html_attributes,
+    datetime_ko_format, normalize_screenshots, clean_text,
+)
 
 try:
     import emoji
-    EMOJI_AVAILABLE = True
 except ImportError:
-    EMOJI_AVAILABLE = False
-
-
-# Type definitions for page_v1 structure
-class PageV1(TypedDict, total=False):
-    """Type definition for page_v1 data structure"""
-    id: str
-    type: str
-    ari: str
-    base64EncodedAri: str
-    status: str
-    title: str
-    ancestors: List[Dict[str, Any]]
-    macroRenderedOutput: Dict[str, Any]
-    body: Dict[str, Any]
-    extensions: Dict[str, Any]
-    _expandable: Dict[str, Any]
-    _links: Dict[str, str]
-
-
-# Type definitions for pages dictionary structure
-class PageInfo(TypedDict, total=False):
-    """Type definition for page information in pages.yaml"""
-    page_id: str
-    title: str
-    breadcrumbs: List[str]
-    breadcrumbs_en: List[str]
-    path: List[str]
+    pass
 
 
 class Attachment:
     """
     <ri:attachment filename="image-20240725-070857.png" version-at-save="1">
-    <ri:attachment filename="스크린샷 2024-08-01 오후 2.50.06.png" version-at-save="1">
+    <ri:attachment filename="스크린샷 2024-08-01 오후 2.50.06.png" version-at-save="1">
     """
 
     def __init__(self, node: Tag, input_dir: str, output_dir: str, public_dir: str) -> None:
         filename = node.get('filename', '')
         if not filename:
-            logging.warning(f"add_attachment: Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
+            logging.warning(f"add_attachment: Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}")
             return
 
         # Apply unicodedata.normalize to prevent unmatched string comparison.
@@ -130,615 +109,6 @@ class Attachment:
             return f'<img {" ".join(attrs)} />'
         else:
             return f'[{caption}]({self.output_dir}/{self.filename})'
-
-
-# Type alias for pages dictionary
-PagesDict = Dict[str, PageInfo]
-
-# Global variable to store an input file path
-INPUT_FILE_PATH = ""
-OUTPUT_FILE_PATH = ""
-LANGUAGE = 'en'
-
-# Global variables to store data
-PAGES_BY_TITLE: PagesDict = {}
-PAGES_BY_ID: PagesDict = {}
-GLOBAL_PAGE_V1: Optional[PageV1] = None
-GLOBAL_ATTACHMENTS: List[Attachment] = []
-GLOBAL_LINK_MAPPING: Dict[str, str] = {}  # Mapping of link text -> pageId from page.v1.yaml
-
-# Confluence status macro color to Badge component color mapping
-CONFLUENCE_COLOR_TO_BADGE_COLOR = {
-    'Green': 'green',
-    'Blue': 'blue',
-    'Red': 'red',
-    'Yellow': 'yellow',
-    'Grey': 'grey',
-    'Gray': 'grey',
-    'Purple': 'purple',
-}
-
-def confluence_url():
-    if GLOBAL_PAGE_V1:
-        page_id = GLOBAL_PAGE_V1.get('id')
-        return f'https://querypie.atlassian.net/wiki/spaces/QM/pages/{page_id}/'
-    else:
-        return 'https://querypie.atlassian.net/wiki/spaces/QM/overview'
-
-
-def parse_confluence_url(href: str) -> Optional[Dict[str, str]]:
-    """
-    Parse a Confluence URL and extract page_id and anchor fragment.
-
-    Args:
-        href: The URL to parse (e.g., https://querypie.atlassian.net/wiki/spaces/QM/pages/1454342158/Identity+Providers#anchor)
-
-    Returns:
-        Dictionary with 'page_id' and 'anchor' keys, or None if not a Confluence URL
-    """
-    if not href:
-        return None
-
-    # Check if it's a Confluence URL
-    if 'atlassian.net/wiki/spaces/' not in href:
-        return None
-
-    parsed = urlparse(href)
-    path = parsed.path
-    fragment = parsed.fragment  # The anchor part after #
-
-    # Extract page_id from path: /wiki/spaces/QM/pages/{page_id}/...
-    match = re.search(r'/pages/(\d+)/', path)
-    if not match:
-        return None
-
-    page_id = match.group(1)
-
-    return {
-        'page_id': page_id,
-        'anchor': fragment if fragment else ''
-    }
-
-
-def convert_confluence_url(href: str) -> tuple[str, Optional[str]]:
-    """
-    Convert a Confluence URL to an internal markdown link.
-
-    Args:
-        href: The URL to convert
-
-    Returns:
-        tuple: (converted_href, readable_link_text)
-               readable_link_text is provided when the original link text (URL) should be replaced
-               Format:
-               - Same page segment: "#섹션 제목"
-               - Different page segment: "문서 제목#섹션 제목" or "Unknown Title#섹션 제목"
-               - Different page (no segment): "문서 제목" or "Unknown Title"
-    """
-    parsed = parse_confluence_url(href)
-    if not parsed:
-        return href, None
-
-    current_page_id = GLOBAL_PAGE_V1.get('id', '') if GLOBAL_PAGE_V1 else ''
-    target_page_id = parsed['page_id']
-    anchor = parsed['anchor']
-
-    if target_page_id == current_page_id and anchor:
-        # Same page segment link - convert to internal anchor
-        decoded_anchor = unquote(anchor).lower()
-        section_title = unquote(anchor).replace('-', ' ')
-        readable_text = f'#{section_title}'
-        logging.debug(f"Converted same-page segment link to #{decoded_anchor}")
-        return f'#{decoded_anchor}', readable_text
-
-    if anchor:
-        # Different page with anchor
-        target_page = PAGES_BY_ID.get(target_page_id)
-        decoded_anchor = unquote(anchor).lower()
-        section_title = unquote(anchor).replace('-', ' ')
-        if target_page:
-            target_path = relative_path_to_titled_page(target_page.get('title', ''))
-            doc_title = target_page.get('title', 'Unknown Title')
-            readable_text = f'{doc_title}#{section_title}'
-            return f'{target_path}#{decoded_anchor}', readable_text
-        logging.warning(f"Target page {target_page_id} not found in pages dictionary")
-        readable_text = f'Unknown Title#{section_title}'
-        return href, readable_text
-
-    # Different page without anchor
-    target_page = PAGES_BY_ID.get(target_page_id)
-    if target_page:
-        return relative_path_to_titled_page(target_page.get('title', '')), target_page.get('title')
-    logging.warning(f"Target page {target_page_id} not found in pages dictionary")
-    return href, 'Unknown Title'
-
-
-def load_pages_yaml(yaml_path: str, pages_by_title: PagesDict, pages_by_id: PagesDict):
-    """
-    Load the pages.yaml file and populate the provided dictionaries with page information
-    
-    Args:
-        yaml_path: Path to the pages.yaml file
-        pages_by_title: Dictionary to be populated with title as key and page info as value
-        pages_by_id: Dictionary to be populated with page_id as key and page info as value
-
-    Returns:
-        PagesDict: Dictionary with title as key and page info as value, or empty dict if file doesn't exist
-    """
-    try:
-        with open(yaml_path, 'r', encoding='utf-8') as f:
-            yaml_string = f.read()
-            yaml_data = yaml.safe_load(yaml_string)
-
-            # Convert a list to dictionary with title as a key
-            pages_dict: PagesDict = {}
-            if isinstance(yaml_data, list):
-                for page in yaml_data:
-                    if not isinstance(page, dict):
-                        logging.warning(f"Page info must be of type dict: {repr(page)}")
-                        continue
-
-                    title_orig = page.get('title_orig')
-                    if not title_orig:
-                        logging.warning(f"Page info must have a title_orig: {repr(page)}")
-                        continue
-
-                    if title_orig in pages_by_title:
-                        logging.warning(f"title_orig ${repr(title_orig)} already exists in pages_by_title: {repr(pages_by_title[title_orig])}")
-                        logging.warning(f"title_orig ${repr(title_orig)} is from {repr(page)}")
-                        continue
-
-                    pages_by_title[title_orig] = page
-                    pages_by_id[page['page_id']] = page
-
-            logging.info(f"Successfully loaded pages.yaml from {yaml_path} with {len(pages_by_id)} pages")
-            return pages_dict
-    except FileNotFoundError:
-        logging.warning(f"Pages YAML file not found: {yaml_path}")
-        return {}
-    except yaml.YAMLError as e:
-        logging.error(f"Error parsing YAML file {yaml_path}: {e}")
-        return {}
-    except Exception as e:
-        logging.error(f"Error loading pages.yaml from {yaml_path}: {e}")
-        return {}
-
-
-def get_page_v1() -> Optional[PageV1]:
-    """Get the current page_v1 data"""
-    global GLOBAL_PAGE_V1
-    return GLOBAL_PAGE_V1
-
-
-def get_attachments() -> List[Attachment]:
-    """Get the current attachments list"""
-    global GLOBAL_ATTACHMENTS
-    return GLOBAL_ATTACHMENTS
-
-
-def set_page_v1(page_v1: Optional[PageV1]) -> None:
-    """Set the current page_v1 data"""
-    global GLOBAL_PAGE_V1
-    GLOBAL_PAGE_V1 = page_v1
-
-
-def set_attachments(attachments: List[Attachment]) -> None:
-    """Set the current attachments list"""
-    global GLOBAL_ATTACHMENTS
-    GLOBAL_ATTACHMENTS = attachments
-
-
-def calculate_relative_path(current_path: List[str], target_path: List[str]):
-    """
-    Calculate a relative path from the current path to a target path using os.path.relpath
-    
-    Args:
-        current_path (list): List of path components for the current page
-        target_path (list): List of path components for the target page
-        
-    Returns:
-        str: Relative path string
-    """
-    import os
-
-    # Convert path lists to string paths
-    current_path_str = os.path.join("/", *current_path) if current_path else ""
-    target_path_str = os.path.join("/", *target_path) if target_path else ""
-    current_base_dir = os.path.dirname(current_path_str)
-    relative_path = os.path.relpath(target_path_str, current_base_dir)
-
-    logging.debug(f"calculate_relative_path: current_path={current_path_str}, target_path={target_path_str}, relative_path={relative_path}")
-    return relative_path
-
-
-def relative_path_to_titled_page(title: str):
-    if get_page_v1():
-        this_title = get_page_v1().get('title')
-        this_page = PAGES_BY_TITLE.get(this_title)
-    else:
-        this_page = None
-        logging.warning(f"Page v1 not found in {INPUT_FILE_PATH}")
-
-    if title:
-        target_page = PAGES_BY_TITLE.get(title)
-    else:
-        target_page = None
-
-    if this_page and target_page:
-        relative_path = calculate_relative_path(this_page.get('path'), target_page.get('path'))
-        if relative_path:
-            href = relative_path
-        else:
-            href = "#invalid-relative-path"
-    elif not target_page:
-        logging.warning(f"Target title '{title}' not found in pages dictionary")
-        href = "#target-title-not-found"
-    else:
-        logging.warning(f"Unexpected failure of relative_path_to_titled_page: {title}")
-        href = "#unexpected-failure"
-    return href
-
-
-def load_page_v1_yaml(yaml_path: str) -> Optional[PageV1]:
-    """
-    Load page.v1.yaml file and return as a dictionary object
-    
-    Args:
-        yaml_path (str): Path to the page.v1.yaml file
-        
-    Returns:
-        PageV1: YAML content as PageV1 dictionary, or None if the file doesn't exist or has errors
-    """
-    try:
-        with open(yaml_path, 'r', encoding='utf-8') as f:
-            yaml_string = f.read()
-            yaml_data = yaml.safe_load(yaml_string)
-            logging.info(f"Successfully loaded page.v1.yaml from {yaml_path}")
-            return yaml_data
-    except FileNotFoundError:
-        logging.warning(f"Page v1 YAML file not found: {yaml_path}")
-        return None
-    except yaml.YAMLError as e:
-        logging.error(f"Error parsing YAML file {yaml_path}: {e}")
-        return None
-    except Exception as e:
-        logging.error(f"Error loading page.v1.yaml from {yaml_path}: {e}")
-        return None
-
-
-def build_link_mapping(page_v1: Optional[PageV1]) -> Dict[str, str]:
-    """
-    Build a mapping of link text -> pageId from page.v1.yaml body.view HTML
-
-    This function parses the rendered HTML in page.v1.yaml's body.view section
-    to extract links with their pageIds. This allows us to generate accurate
-    Confluence URLs for external links (links to pages outside the current conversion scope).
-
-    Args:
-        page_v1 (Optional[PageV1]): The page.v1.yaml data structure
-
-    Returns:
-        Dict[str, str]: Mapping of link text to pageId
-    """
-    link_map = {}
-
-    if not page_v1:
-        logging.warning("No page.v1 data available to build link mapping")
-        return link_map
-
-    try:
-        view_html = page_v1.get('body', {}).get('view', {}).get('value', '')
-
-        if not view_html:
-            logging.warning("No body.view HTML found in page.v1.yaml")
-            return link_map
-
-        soup = BeautifulSoup(view_html, 'html.parser')
-
-        # Find all links with data-linked-resource-id attribute
-        for link in soup.find_all('a', {'data-linked-resource-id': True}):
-            text = link.get_text()
-            page_id = link.get('data-linked-resource-id', '')
-            resource_type = link.get('data-linked-resource-type', '')
-
-            if text and page_id and resource_type == 'page':
-                link_map[text] = page_id
-                logging.debug(f"Link mapping: '{text}' -> pageId {page_id}")
-
-        logging.info(f"Built link mapping with {len(link_map)} entries")
-
-    except Exception as e:
-        logging.error(f"Error building link mapping from page.v1.yaml: {e}")
-
-    return link_map
-
-
-def resolve_external_link(link_text: str, space_key: str, target_title: str) -> str:
-    """
-    Resolve external Confluence link URL using pageId from global link mapping
-
-    This function attempts to generate an accurate Confluence URL for external links
-    (links to pages outside the current conversion scope) by looking up the pageId
-    from GLOBAL_LINK_MAPPING. If pageId is not found, it falls back to space overview
-    or error link.
-
-    Args:
-        link_text (str): The link body text to match in GLOBAL_LINK_MAPPING
-        space_key (str): The Confluence space key
-        target_title (str): The target page title (for logging purposes)
-
-    Returns:
-        str: The resolved URL in one of these formats:
-            - With pageId: https://querypie.atlassian.net/wiki/spaces/{space_key}/pages/{page_id}
-            - Without pageId but with space_key: https://querypie.atlassian.net/wiki/spaces/{space_key}/overview
-            - Without space_key: #link-error
-    """
-    page_id = GLOBAL_LINK_MAPPING.get(link_text)
-
-    if page_id and space_key:
-        # Generate accurate URL with pageId
-        href = f'https://querypie.atlassian.net/wiki/spaces/{space_key}/pages/{page_id}'
-        logging.info(f"Generated external Confluence link with pageId for '{link_text}' (title: '{target_title}'): {href}")
-        return href
-    elif space_key:
-        # Fallback to space overview URL if no pageId found
-        href = f'https://querypie.atlassian.net/wiki/spaces/{space_key}/overview'
-        logging.warning(f"No pageId found for '{link_text}', using space overview for '{target_title}' in space '{space_key}': {href}")
-        return href
-    else:
-        # No space key - show simple error message
-        href = '#link-error'
-        logging.warning(f"No space key found for external link to '{target_title}', using error anchor: {href}")
-        return href
-
-
-def backtick_curly_braces(text):
-    """
-    Wrap text embraced by curly braces with backticks.
-
-    If there are 20 or fewer word characters (including spaces, Korean characters,
-    alphabets, etc.) between the curly braces, format as `{...}`.
-
-    Args:
-        text (str): The input text to process.
-
-    Returns:
-        str: The processed text with curly braces content wrapped in backticks.
-    """
-    # \u2026 is the ellipsis character, `...` which is often used in Confluence
-    pattern = r'(\{\{?[\w\s\-\_\.\|\:\u2026]{1,60}\}\}?)'
-    return re.sub(pattern, r'`\1`', text)
-
-
-def navigable_string_as_markdown(node):
-    if isinstance(node, NavigableString):
-        # This is a leaf node with text
-        text = clean_text(node.text)
-        text = text.replace('\n', ' ')  # Replace newlines with space
-        # Normalize multiple spaces to a single space
-        text = re.sub(r'\s+', ' ', text)
-        if node.parent.name == 'code':
-            # Do not encode < and > or backtick_curly_braces if the parent node is `<code>`,
-            # as it is backticked already and characters will be displayed correctly.
-            pass
-        else:
-            # Encode < and > to prevent conflict with JSX syntax.
-            text = text.replace('<', '&lt;').replace('>', '&gt;')
-            text = backtick_curly_braces(text)
-        return text
-    else:
-        # Fatal error and crash
-        raise TypeError(f"as_markdown() expects a NavigableString, got: {type(node).__name__}")
-
-
-def split_into_sentences(line):
-    """
-    Split a string into sentences using sentence-ending punctuation marks.
-    
-    Sentences are split at patterns matching (. ! ?) followed by whitespace.
-    The punctuation marks are included in the preceding sentence.
-    
-    Args:
-        line (str): The input string to split.
-        
-    Returns:
-        list[str]: A list of sentences. If the string is empty or None,
-                   returns an empty list. If no sentence terminators are found,
-                   returns a list containing the original string.
-    """
-    if not line or not isinstance(line, str):
-        return []
-    
-    # Pattern matches sentence-ending punctuation (. ! ?) followed by whitespace
-    # Only matches when preceded by 3 non-digit characters
-    #   - This condition prevents splitting on `1. Blah Blah... 2. Answer`.
-    #   - This condition prevents splitting on `Q. Question... A. Answer`.
-    # Using positive lookbehind to ensure 3 non-digit characters before punctuation
-    # Using capturing group to preserve the punctuation in the split result
-    pattern = r'(?<=\D{3})([.!?])\s+'
-
-    # Split the string and preserve punctuation marks
-    parts = re.split(pattern, line)
-    
-    # Reconstruct sentences: parts[0] is first sentence, parts[1] is punctuation,
-    # parts[2] is next sentence, parts[3] is punctuation, etc.
-    sentences = []
-    current_sentence = ''
-    
-    for i, part in enumerate(parts):
-        if i % 2 == 0:
-            # Even indices are sentence parts
-            current_sentence += part
-        else:
-            # Odd indices are punctuation marks
-            current_sentence += part
-            # Add the completed sentence (with punctuation) to the list
-            if current_sentence.strip():
-                sentences.append(current_sentence.strip())
-            current_sentence = ''
-    
-    # Add the last sentence if there's any remaining text
-    if current_sentence.strip():
-        sentences.append(current_sentence.strip())
-    
-    # If no sentences were found (no sentence terminators), return the original string
-    if not sentences:
-        return [line.strip()] if line.strip() else []
-    
-    return sentences
-
-def ancestors(node):
-    max_depth = 20
-    stack = []
-    current = node.parent
-    while current and len(stack) < max_depth:
-        stack.append(f'<{current.name}>')
-        current = current.parent
-    return ''.join(reversed(stack))
-
-
-def print_node_with_properties(node):
-    """
-    Print all properties of a BeautifulSoup node in the format:
-    <{node.name} property="{property.value}">
-
-    Args:
-        node: A BeautifulSoup Tag object
-
-    Returns:
-        A string representation of the node with all its properties
-    """
-    if not hasattr(node, 'name'):
-        return str(node)
-
-    # Start with the node name
-    result = f"<{node.name}"
-
-    # Add all attributes
-    for attr_name, attr_value in node.attrs.items():
-        # Handle different types of attribute values
-        if isinstance(attr_value, list):
-            # For list attributes like class, join with space
-            attr_value = ' '.join(attr_value)
-        elif isinstance(attr_value, bool) and attr_value:
-            # For boolean attributes that are True, just include the name
-            result += f" {attr_name}"
-            continue
-
-        # Add the attribute to the result
-        result += f" {attr_name}=\"{attr_value}\""
-
-    # Close the tag
-    result += ">"
-
-    return result
-
-
-def get_html_attributes(node):
-    """Extract HTML attributes from a node and format them as a string."""
-    if not hasattr(node, 'attrs') or not node.attrs:
-        return ""
-
-    attrs_list = []
-    for attr_name, attr_value in node.attrs.items():
-        # TODO(JK): Do not include style attribute of Tag for now.
-        # Or, npm run build fails.
-        # MDX requires style property in JSX format, style={{ name: value, ...}}.
-        # TODO(JK): Do not include class attribute of Tag for now.
-        # class="numberingColumn" might be the cause of broken table rendering.
-        if attr_name in ['style', 'class']:
-            continue
-        
-        # Remove local-id attribute (Confluence-specific, not needed in MDX)
-        if attr_name == 'local-id':
-            continue
-        
-        # Remove all data-* attributes (Confluence-specific metadata, not needed in MDX)
-        if attr_name.startswith('data-'):
-            continue
-
-        if isinstance(attr_value, list):
-            # Convert list-type attribute values (e.g., class) to a space-separated string
-            attr_value = ' '.join(attr_value)
-        elif isinstance(attr_value, bool):
-            # For boolean attributes, include only the attribute name when the value is True
-            if attr_value:
-                attrs_list.append(attr_name)
-            continue
-
-        # Escape values of HTML attributes
-        attr_value = attr_value.replace('"', '&quot;')
-        attrs_list.append(f'{attr_name}="{attr_value}"')
-
-    if attrs_list:
-        return " " + " ".join(attrs_list)
-    return ""
-
-
-def datetime_ko_format(date_string):
-    """
-    Convert '2024-08-01 오후 2.50.06' format to '20240801-145006' format
-
-    Args:
-        date_string (str): Date/time string to convert
-
-    Returns:
-        str: Converted date/time string
-    """
-    try:
-        # Split the input string into date and time parts
-        # '2024-08-01 오후 2.50.06' -> ['2024-08-01', '오후 2.50.06']
-        parts = date_string.split(' ')
-
-        if len(parts) != 3:
-            raise ValueError(f"Invalid date format: <{date_string}>")
-
-        date_part = parts[0]  # '2024-08-01'
-        ampm_part = parts[1]  # '오후'
-        time_part = parts[2]  # '2.50.06'
-
-        # Parse date part (YYYY-MM-DD -> YYYYMMDD)
-        date_obj = datetime.strptime(date_part, '%Y-%m-%d')
-        date_formatted = date_obj.strftime('%Y%m%d')
-
-        # Parse time part
-        time_parts = time_part.split('.')
-        if len(time_parts) != 3:
-            raise ValueError("Invalid time format.")
-
-        hour = int(time_parts[0])
-        minute = int(time_parts[1])
-        second = int(time_parts[2])
-
-        # Add 12 for PM (AM remains the same)
-        if ampm_part == '오후' and hour != 12:
-            hour += 12
-        elif ampm_part == '오전' and hour == 12:
-            hour = 0
-
-        # Format time as HHMMSS
-        time_formatted = f"{hour:02d}{minute:02d}{second:02d}"
-
-        # Return a final result
-        return f"{date_formatted}-{time_formatted}"
-
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-
-def normalize_screenshots(filename):
-    screenshot_ko = unicodedata.normalize('NFC', '스크린샷')
-    assert len(screenshot_ko) == 4  # Normalized string should have four characters.
-
-    normalized = clean_text(filename)
-    if re.match(rf'{screenshot_ko} \d\d\d\d-\d\d-\d\d .*.png', normalized):
-        datetime_ko = normalized.replace(f'{screenshot_ko} ', '').replace('.png', '')
-        datetime_std = datetime_ko_format(datetime_ko)
-        normalized = 'screenshot-' + datetime_std + '.png'
-    if normalized.find(' ') >= 0:
-        normalized = normalized.replace(' ', '-')
-
-    return normalized
 
 
 class SingleLineParser:
@@ -879,7 +249,7 @@ class SingleLineParser:
                 self.markdown_lines.append(f'<Badge color="{color}">{title}</Badge>')
             else:
                 # For other structured macros, we can just log or skip
-                logging.warning(f"SingleLineParser: Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
+                logging.warning(f"SingleLineParser: Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}")
                 for child in node.children:
                     self.convert_recursively(child)
         elif node.name in ['ac:parameter']:
@@ -892,7 +262,7 @@ class SingleLineParser:
                 # ac:parameter with colour is not needed in Markdown
                 pass
             else:
-                logging.warning(f"SingleLineParser: Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
+                logging.warning(f"SingleLineParser: Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}")
                 for child in node.children:
                     self.convert_recursively(child)
         elif node.name in ['ac:inline-comment-marker']:
@@ -925,7 +295,7 @@ class SingleLineParser:
                 <ac:adf-fragment-mark>
                     <ac:adf-fragment-mark-detail name="Table 1" local-id="42cfbf5f-5c57-44da-8f07-e1ea866a985a"/>
                 </ac:adf-fragment-mark>
-            
+
             Target:
                 <a id="table-1"></a>
                 - Use lower cases for fragment names.
@@ -956,7 +326,7 @@ class SingleLineParser:
             # First check ac:emoji-fallback attribute (may already be an emoji character)
             fallback = node.get('emoji-fallback', '')
             shortname = node.get('emoji-shortname', '')
-            
+
             # Check if fallback is already an emoji character (not in shortname format)
             if fallback and not fallback.startswith(':'):
                 # Already an actual emoji character
@@ -994,13 +364,13 @@ class SingleLineParser:
                     from datetime import datetime
                     date_obj = datetime.fromisoformat(datetime_attr.replace('Z', '+00:00'))
 
-                    if LANGUAGE == 'ko':
+                    if ctx.LANGUAGE == 'ko':
                         # Korean: YYYY년 MM월 DD일
                         formatted_date = date_obj.strftime('%Y년 %m월 %d일')
-                    elif LANGUAGE == 'ja':
+                    elif ctx.LANGUAGE == 'ja':
                         # Japanese: YYYY年MM月DD日
                         formatted_date = date_obj.strftime('%Y年%m月%d日')
-                    elif LANGUAGE == 'en':
+                    elif ctx.LANGUAGE == 'en':
                         # English: Jan 1, 2025
                         formatted_date = date_obj.strftime('%b %d, %Y')
                     else:
@@ -1011,14 +381,14 @@ class SingleLineParser:
                 except ValueError:
                     # Use original text if date parsing fails
                     logging.warning(
-                        f"Failed to parse datetime '{datetime_attr}' in {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
+                        f"Failed to parse datetime '{datetime_attr}' in {print_node_with_properties(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}")
             else:
                 # Process child nodes if the datetime attribute is not present
-                logging.warning(f"Failed to get datetime attribute in {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
+                logging.warning(f"Failed to get datetime attribute in {print_node_with_properties(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}")
         elif node.name in ['ac:image']:
             self.convert_inline_image(node)
         else:
-            logging.warning(f"SingleLineParser: Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
+            logging.warning(f"SingleLineParser: Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}")
             self.markdown_lines.append(f'[{node.name}]')
             for child in node.children:
                 self.convert_recursively(child)
@@ -1280,8 +650,8 @@ class MultiLineParser:
             if node.parent.name == '[document]' and len(node.text.strip()) == 0:
                 pass
             else:
-                logging.warning(f"MultiLineParser: Unexpected NavigableString {repr(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
-                self.markdown_lines.append(f"MultiLineParser: Unexpected NavigableString {repr(node)} of from {ancestors(node)} in {INPUT_FILE_PATH}")
+                logging.warning(f"MultiLineParser: Unexpected NavigableString {repr(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}")
+                self.markdown_lines.append(f"MultiLineParser: Unexpected NavigableString {repr(node)} of from {ancestors(node)} in {ctx.INPUT_FILE_PATH}")
             return
 
         logging.debug(f"MultiLineParser: type={type(node).__name__}, name={node.name}, value={repr(node.text)}")
@@ -1314,7 +684,7 @@ class MultiLineParser:
             # Table of contents macro, we can skip it, as toc is provided by the Markdown renderer by default
             logging.info("Skipping TOC macro")
         elif node.name in ['ac:structured-macro'] and attr_name in ['children']:
-            logging.info(f"Unsupported {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
+            logging.info(f"Unsupported {print_node_with_properties(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}")
             self.markdown_lines.append(f'(Unsupported xhtml node: &lt;ac:structured-macro name="children"&gt;)\n')
         elif node.name in ['blockquote']:
             self.append_empty_line_unless_first_child(node)
@@ -1386,7 +756,7 @@ class MultiLineParser:
             # To prevent ambiguity with headings, use ______ for a horizontal rule.
             self.markdown_lines.append(f'______\n')
         else:
-            logging.warning(f"MultiLineParser: Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
+            logging.warning(f"MultiLineParser: Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}")
             self.markdown_lines.append(f'[{node.name}]\n')
             for child in node.children:
                 self.convert_recursively(child)
@@ -1401,11 +771,11 @@ class MultiLineParser:
             else:
                 if isinstance(child, NavigableString):
                     if len(child.text.strip()) > 0:
-                        logging.warning(f'Skip extracting NavigableString({repr(child)}) of <{node.name}> from {ancestors(node)} in {INPUT_FILE_PATH}')
+                        logging.warning(f'Skip extracting NavigableString({repr(child)}) of <{node.name}> from {ancestors(node)} in {ctx.INPUT_FILE_PATH}')
                     else:
-                        logging.debug(f'Skip extracting NavigableString({repr(child)}) of <{node.name}> from {ancestors(node)} in {INPUT_FILE_PATH}')
+                        logging.debug(f'Skip extracting NavigableString({repr(child)}) of <{node.name}> from {ancestors(node)} in {ctx.INPUT_FILE_PATH}')
                 else:
-                    logging.warning(f'Skip extracting <{child.name}> of <{node.name}> from {ancestors(node)} in {INPUT_FILE_PATH}')
+                    logging.warning(f'Skip extracting <{child.name}> of <{node.name}> from {ancestors(node)} in {ctx.INPUT_FILE_PATH}')
         self.list_stack.pop()
         return
 
@@ -1588,7 +958,7 @@ class MultiLineParser:
             </ac:parameter>
         </ac:structured-macro>
 
-        📎 [994_external.json](./994_external.json)
+        :paperclip: [994_external.json](./994_external.json)
         """
         filename = ""
         name_parameter = node.find('ac:parameter', {'name': 'name'})
@@ -1654,7 +1024,7 @@ class TableToNativeMarkdown:
     def convert_recursively(self, node):
         """Recursively convert child nodes to Markdown."""
         if isinstance(node, NavigableString):
-            logging.warning(f"TableToNativeMarkdown: Unexpected NavigableString {repr(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
+            logging.warning(f"TableToNativeMarkdown: Unexpected NavigableString {repr(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}")
             self.markdown_lines.append(node.text)
             return
 
@@ -1662,7 +1032,7 @@ class TableToNativeMarkdown:
         if node.name in ['table']:
             self.convert_table(node)
         else:
-            logging.warning(f"TableToNativeMarkdown: Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
+            logging.warning(f"TableToNativeMarkdown: Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}")
             self.markdown_lines.append(f'[{node.name}]\n')
             for child in node.children:
                 self.convert_recursively(child)
@@ -1766,7 +1136,7 @@ class TableToHtmlTable:
     def convert_recursively(self, node):
         """Recursively convert child nodes to Markdown."""
         if isinstance(node, NavigableString):
-            logging.warning(f"TableToHtmlTable: Unexpected NavigableString {repr(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
+            logging.warning(f"TableToHtmlTable: Unexpected NavigableString {repr(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}")
             self.markdown_lines.append(node.text)
             return
 
@@ -1806,7 +1176,7 @@ class TableToHtmlTable:
             # <ac:adf-fragment-mark> could be converted.
             self.markdown_lines.append(SingleLineParser(node).as_markdown + '\n')
         else:
-            logging.warning(f"TableToHtmlTable: Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
+            logging.warning(f"TableToHtmlTable: Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}")
             self.markdown_lines.append(f'[{node.name}]\n')
             for child in node.children:
                 self.convert_recursively(child)
@@ -1853,7 +1223,7 @@ class StructuredMacroToCallout:
     def convert_recursively(self, node):
         """Recursively convert child nodes to Markdown."""
         if isinstance(node, NavigableString):
-            logging.warning(f"StructuredMacroToCallout: Unexpected NavigableString {repr(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
+            logging.warning(f"StructuredMacroToCallout: Unexpected NavigableString {repr(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}")
             # Do not append unexpected NavigableString to markdown_lines.
             return
 
@@ -1872,7 +1242,7 @@ class StructuredMacroToCallout:
                 self.markdown_lines.append('<Callout type="error">\n')
             else:
                 self.markdown_lines.append(f'<Callout> {"{"}/* <ac:structured-macro ac:name="{attr_name}"> */{"}"}\n')
-                logging.warning(f"Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
+                logging.warning(f"Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}")
 
             for child in node.children:
                 self.markdown_lines.extend(MultiLineParser(child).as_markdown)
@@ -1888,17 +1258,17 @@ class StructuredMacroToCallout:
             else:
                 self.markdown_lines.append('<Callout>\n')
                 logging.warning(
-                    f'Cannot find <ac:parameter ac:name="panelIconText"> under {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}')
+                    f'Cannot find <ac:parameter ac:name="panelIconText"> under {print_node_with_properties(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}')
 
             if rich_text_body:
                 self.markdown_lines.extend(MultiLineParser(rich_text_body).as_markdown)
             else:
                 logging.warning(
-                    f'Cannot find <ac:rich-text-body> under {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}')
+                    f'Cannot find <ac:rich-text-body> under {print_node_with_properties(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}')
 
             self.markdown_lines.append('</Callout>\n')
         else:
-            logging.warning(f"StructuredMacroToCallout: Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
+            logging.warning(f"StructuredMacroToCallout: Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}")
             self.markdown_lines.append(f'[{node.name}]\n')
             for child in node.children:
                 self.convert_recursively(child)
@@ -1949,7 +1319,7 @@ class AdfExtensionToCallout:
     def convert_recursively(self, node):
         """Recursively convert child nodes to Markdown."""
         if isinstance(node, NavigableString):
-            logging.warning(f"AdfExtensionToCallout: Unexpected NavigableString {repr(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
+            logging.warning(f"AdfExtensionToCallout: Unexpected NavigableString {repr(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}")
             # Do not append unexpected NavigableString to markdown_lines.
             return
 
@@ -1965,26 +1335,26 @@ class AdfExtensionToCallout:
                 panel_type = adf_attribute.text
                 logging.debug(f'Found <ac:adf-attribute key="panel-type"> text={adf_attribute.text}')
             else:
-                logging.warning(f"No <ac:adf-attribute> in {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
+                logging.warning(f"No <ac:adf-attribute> in {print_node_with_properties(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}")
 
             if panel_type == 'note':
                 self.markdown_lines.append('<Callout type="important">\n')
             else:
                 self.markdown_lines.append('<Callout>\n')
                 logging.warning(
-                    f'Unexpected panel-type of "{panel_type}" in {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}')
+                    f'Unexpected panel-type of "{panel_type}" in {print_node_with_properties(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}')
 
             adf_content = node.find('ac:adf-content')
             if adf_content:
                 self.markdown_lines.extend(MultiLineParser(adf_content).as_markdown)
             else:
-                logging.warning(f"No <ac:adf-content> in {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
+                logging.warning(f"No <ac:adf-content> in {print_node_with_properties(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}")
 
             self.markdown_lines.append('</Callout>\n')
         elif node.name in ['ac:adf-fallback']:
             pass  # Ignore <ac:adf-fallback>
         else:
-            logging.warning(f"AdfExtensionToCallout: Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {INPUT_FILE_PATH}")
+            logging.warning(f"AdfExtensionToCallout: Unexpected {print_node_with_properties(node)} from {ancestors(node)} in {ctx.INPUT_FILE_PATH}")
             self.markdown_lines.append(f'[{node.name}]\n')
             for child in node.children:
                 self.convert_recursively(child)
@@ -2071,190 +1441,3 @@ class ConfluenceToMarkdown:
 
         # Join all Markdown lines and return
         return ''.join(chain(self.remark, self.imports, self.markdown_lines))
-
-
-def generate_meta_from_children(input_dir: str, output_file_path: str, pages_by_id: PagesDict) -> None:
-    """Generate a Nextra sidebar _meta.ts file using children.v2.yaml in input_dir.
-    - Reads children.v2.yaml if present.
-    - Sorts children by childPosition.
-    - Uses pages_by_id to resolve each child's filename slug from pages.yaml path.
-    - Warns when a child id is not found in pages_by_id.
-    - Validates that a corresponding MDX file (slug_key.mdx) exists next to _meta.ts; otherwise warns and skips.
-    - Writes _meta.ts under dirname(output_file_path)/stem/_meta.ts.
-    Swallows exceptions with logging to keep conversion resilient.
-    """
-    try:
-        children_yaml_path = os.path.join(input_dir, 'children.v2.yaml')
-        if os.path.exists(children_yaml_path):
-            with open(children_yaml_path, 'r', encoding='utf-8') as yf:
-                children_data = yaml.safe_load(yf)
-            results = children_data.get('results') if isinstance(children_data, dict) else None
-            if isinstance(results, list) and len(results) > 0:
-                def _pos(item: dict) -> int:
-                    try:
-                        return int(item.get('childPosition', 0))
-                    except Exception:
-                        return 0
-                ordered = sorted(results, key=_pos)
-
-                # Determine where _meta.ts and child mdx files should live
-                meta_dir = os.path.join(os.path.dirname(output_file_path), Path(output_file_path).stem)
-                os.makedirs(meta_dir, exist_ok=True)
-
-                entries: List[str] = []
-                for child in ordered:
-                    if not isinstance(child, dict):
-                        continue
-                    child_id = str(child.get('id')) if child.get('id') is not None else None
-                    title = clean_text(child.get('title'))
-                    if not child_id:
-                        logging.warning(f"children.v2.yaml entry missing id: {child}")
-                        continue
-                    page_info = pages_by_id.get(child_id)
-                    if not page_info:
-                        logging.warning(f"Child page id {child_id} not found in pages.yaml while generating _meta.ts from {children_yaml_path}")
-                        # Continue but skip since we cannot determine filename
-                        continue
-                    # Determine slug/filename from page_info.path if available
-                    slug_key: Optional[str] = None
-                    try:
-                        path_list = page_info.get('path') if isinstance(page_info, dict) else None
-                        if isinstance(path_list, list) and len(path_list) > 0:
-                            slug_key = str(path_list[-1])
-                    except Exception:
-                        slug_key = None
-                    if not slug_key:
-                        logging.warning(f"Child page id {child_id} has no valid path in pages.yaml; skipping entry in _meta.ts")
-                        continue
-
-                    key_repr = f"'{slug_key}'"
-                    title_repr = (title or '').strip().replace("'", "\\'")
-                    entries.append(f"  {key_repr}: '{title_repr}',")
-
-                if entries:
-                    meta_path = os.path.join(meta_dir, '_meta.ts')
-                    content = 'export default {\n' + "\n".join(entries) + '\n};\n'
-                    with open(meta_path, 'w', encoding='utf-8') as mf:
-                        mf.write(content)
-                    logging.info(f"Generated sidebar meta at {meta_path} from {children_yaml_path}")
-                else:
-                    logging.info("No sidebar entries generated: children list empty after processing")
-            else:
-                logging.info("children.v2.yaml has no 'results' or it is empty; skipping _meta.ts")
-        else:
-            logging.debug("No children.v2.yaml found; skipping _meta.ts generation")
-    except Exception as meta_err:
-        logging.error(f"Failed to generate _meta.ts: {meta_err}")
-
-
-def main():
-    parser = argparse.ArgumentParser(description='Convert Confluence XHTML to Markdown')
-    parser.add_argument('input_file', help='Input XHTML file path')
-    parser.add_argument('output_file', help='Output Markdown file path')
-    parser.add_argument('--public-dir',
-                        default='./public',
-                        help='/public directory path')
-    parser.add_argument('--attachment-dir',
-                        help='Directory to save attachments (default: output file directory)')
-    parser.add_argument('--skip-image-copy', action='store_true',
-                        help='이미지 파일 복사를 생략 (경로만 지정대로 생성)')
-    parser.add_argument('--log-level',
-                        choices=['debug', 'info', 'warning', 'error', 'critical'],
-                        default='info',
-                        help='Set the logging level (default: info)')
-    args = parser.parse_args()
-
-    # Configure logging with the specified level
-    log_level = getattr(logging, args.log_level.upper())
-    logging.basicConfig(level=log_level, format='%(levelname)s - %(funcName)s:%(lineno)d - %(message)s')
-
-    # Store the input file path in a global variable
-    global INPUT_FILE_PATH, OUTPUT_FILE_PATH, LANGUAGE
-
-    INPUT_FILE_PATH = os.path.normpath(args.input_file)  # Normalize path for cross-platform compatibility
-    OUTPUT_FILE_PATH = os.path.normpath(args.output_file)
-
-    input_dir = os.path.dirname(INPUT_FILE_PATH)
-    # Set an attachment directory if provided
-    if args.attachment_dir:
-        output_dir = args.attachment_dir
-        logging.info(f"Using attachment directory: {output_dir}")
-    else:
-        output_file_stem = Path(args.output_file).stem
-        output_dir = os.path.join(os.path.dirname(args.output_file), output_file_stem)
-        logging.info(f"Using default attachment directory: {output_dir}")
-
-    # Extract language code from the output file path
-    path_parts = OUTPUT_FILE_PATH.split(os.sep)
-
-    # Look for 2-letter language code in the path
-    detected_language = 'en'  # Default to English
-    for part in path_parts:
-        if len(part) == 2 and part.isalpha():
-            # Check if it's a known language code
-            if part in ['ko', 'ja', 'en']:
-                detected_language = part
-                break
-
-    # Update global LANGUAGE variable
-    LANGUAGE = detected_language
-    logging.info(f"Detected language from output path: {LANGUAGE}")
-
-    try:
-        with open(args.input_file, 'r', encoding='utf-8') as f:
-            html_content = f.read()
-
-        # Replace XML namespace prefixes
-        html_content = re.sub(r'\sac:', ' ', html_content)
-        html_content = re.sub(r'\sri:', ' ', html_content)
-
-        # Load pages.yaml to get the current page's path
-        pages_yaml_path = os.path.join(input_dir, '..', 'pages.yaml')
-        global PAGES_BY_TITLE
-        load_pages_yaml(pages_yaml_path, PAGES_BY_TITLE, PAGES_BY_ID)
-
-        # Load page.v1.yaml from the same directory as the input file
-        page_v1: Optional[PageV1] = load_page_v1_yaml(os.path.join(input_dir, 'page.v1.yaml'))
-        set_page_v1(page_v1)
-
-        # Build link mapping from page.v1.yaml for external link pageId resolution
-        global GLOBAL_LINK_MAPPING
-        GLOBAL_LINK_MAPPING = build_link_mapping(page_v1)
-
-        converter = ConfluenceToMarkdown(html_content)
-        converter.load_attachments(input_dir, output_dir, args.public_dir,
-                                   skip_image_copy=args.skip_image_copy)
-        markdown_content = converter.as_markdown()
-
-        with open(args.output_file, 'w', encoding='utf-8') as f:
-            f.write(markdown_content)
-
-        attachments = get_attachments()
-        for it in attachments:
-            if it.used:
-                logging.debug(f'Attachment {it} is used.')
-            else:
-                logging.warning(f'Attachment {it} is NOT used.')
-
-        # Generate _meta.ts from children.v2.yaml to preserve child order for Netra sidebar
-        generate_meta_from_children(input_dir, OUTPUT_FILE_PATH, PAGES_BY_ID)
-
-        logging.info(f"Successfully converted {args.input_file} to {args.output_file}")
-
-    except Exception as e:
-        import traceback
-        tb = traceback.extract_tb(e.__traceback__)
-        if tb:
-            last_frame = tb[-1]
-            file_name = last_frame.filename.split('/')[-1]
-            line_no = last_frame.lineno
-            func_name = last_frame.name
-            code = last_frame.line
-            logging.error(f"Error during conversion: {e} (in {file_name}, function '{func_name}', line {line_no}, code: '{code}')")
-        else:
-            logging.error(f"Error during conversion: {e}")
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()
