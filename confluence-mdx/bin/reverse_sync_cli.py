@@ -235,7 +235,10 @@ def run_verify(
     verify_mdx = (var_dir / 'verify.mdx').read_text()
 
     # Step 7: 완전 일치 검증 → result.yaml 저장
-    verify_result = verify_roundtrip(expected_mdx=improved_mdx, actual_mdx=verify_mdx)
+    verify_result = verify_roundtrip(
+        expected_mdx=_strip_frontmatter(improved_mdx),
+        actual_mdx=_strip_frontmatter(verify_mdx),
+    )
     status = 'pass' if verify_result.passed else 'fail'
     result = {
         'page_id': page_id, 'created_at': now,
@@ -250,6 +253,15 @@ def run_verify(
         yaml.dump(result, allow_unicode=True, default_flow_style=False))
 
     return result
+
+
+def _strip_frontmatter(mdx: str) -> str:
+    """MDX 문자열에서 YAML frontmatter 블록을 제거한다."""
+    if mdx.startswith('---\n'):
+        end = mdx.find('\n---\n', 4)
+        if end != -1:
+            return mdx[end + 5:]
+    return mdx
 
 
 _NON_CONTENT_TYPES = frozenset(('empty', 'frontmatter', 'import_statement'))
@@ -274,6 +286,7 @@ def _normalize_mdx_to_plain(content: str, block_type: str) -> str:
         s = re.sub(r'^[-*+]\s+', '', s)
         s = re.sub(r'\*\*(.+?)\*\*', r'\1', s)
         s = re.sub(r'`([^`]+)`', r'\1', s)
+        s = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', s)
         s = re.sub(r'<[^>]+/?>', '', s)
         s = html_module.unescape(s)
         s = s.strip()
