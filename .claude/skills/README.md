@@ -26,6 +26,7 @@
 ### 프로세스 Skills
 - **commit.md** - Commit 및 PR 작성 가이드
 - **code-review.md** - 코드 변경 사항 검토 가이드라인
+- **new-feature-doc.md** - 신규 기능 사용자 매뉴얼 초안 자동 작성 (Playwright 스크린샷 포함)
 
 ## Skills과 참조 문서 관계
 
