@@ -1,0 +1,183 @@
+---
+title: 'Connecting to Kubernetes Clusters with Web Client'
+confluenceUrl: ''
+---
+
+import { Callout } from 'nextra/components'
+
+# Connecting to Kubernetes Clusters with Web Client
+
+### Overview
+
+KAC Web Client lets you access Kubernetes clusters and manage resources directly from your browser — no Agent installation required.
+
+<Callout type="info">
+KAC Web Client is currently in Beta. You can access it directly via the **Web Client** item in the top GNB menu, or by clicking the `Connect` button on the cluster detail screen under the **Kubernetes** menu.
+</Callout>
+
+### Selecting a Role
+
+<figure data-layout="center" data-align="center">
+<img src="/user-manual/kubernetes-access-control/web-client/connections-role-select.png" alt="QueryPie Web &gt; Kubernetes &gt; Kubernetes &gt; Select a Role" width="760" />
+<figcaption>
+QueryPie Web &gt; Kubernetes &gt; Kubernetes &gt; Select a Role
+</figcaption>
+</figure>
+
+1. Click **Kubernetes** in the top GNB menu.
+2. In the **Select a Role** modal, choose the Role you want to use and click `Select`.
+    1. The list of accessible clusters varies depending on the selected Role.
+    2. If no Role has been granted, the left panel will be empty. Use the Access Role Request form in the Workflow menu to request the appropriate permissions.
+
+### Connecting to a Cluster
+
+<figure data-layout="center" data-align="center">
+<img src="/user-manual/kubernetes-access-control/web-client/connections-cluster-detail.png" alt="QueryPie Web &gt; Kubernetes &gt; Kubernetes &gt; Cluster Detail" width="760" />
+<figcaption>
+QueryPie Web &gt; Kubernetes &gt; Kubernetes &gt; Cluster Detail
+</figcaption>
+</figure>
+
+1. After selecting a Role, click the cluster you want to connect to in the left panel.
+2. Review the following information in the detail view on the right.
+    1. **Cluster Endpoint**: The Kubernetes cluster API URL.
+    2. **Expiration Date**: The expiration date of your current permission.
+    3. **Status**: Permission status (Active/Inactive).
+    4. **Assigned Policies**: Policies applied to this cluster. Click the magnifying glass icon to view policy details.
+3. Click `Connect` to open the Web Client IDE.
+
+<Callout type="info">
+Clicking `Open Agent` lets you connect using the traditional Agent method. See the [Agent Manual](../user-agent) for installation instructions.
+</Callout>
+
+### Web Client Overview
+
+<figure data-layout="center" data-align="center">
+<img src="/user-manual/kubernetes-access-control/web-client/web-client-ide-overview.png" alt="QueryPie Web &gt; Web Client &gt; Cluster Overview" width="760" />
+<figcaption>
+QueryPie Web &gt; Web Client &gt; Cluster Overview
+</figcaption>
+</figure>
+
+When you connect, the **Cluster Overview** screen is displayed, showing the overall status of the cluster.
+
+* Left sidebar (**Resource Browser**): Browse cluster resources by category.
+* Right main area: Displays the list or details of the selected resource.
+* Bottom panel: Run Pod log viewer and Shell terminal as tabs.
+
+### Viewing the Resource List
+
+<figure data-layout="center" data-align="center">
+<img src="/user-manual/kubernetes-access-control/web-client/web-client-resource-list.png" alt="QueryPie Web &gt; Web Client &gt; Resource List" width="760" />
+<figcaption>
+QueryPie Web &gt; Web Client &gt; Resource List
+</figcaption>
+</figure>
+
+Select a resource type from the left sidebar to view the corresponding resource list.
+
+* Use the `All Namespaces` dropdown to filter by a specific Namespace.
+* Use the `Filter by name` search box to search resources by name.
+* Click `+ Create` to create a new resource.
+
+The following resource categories are available in the sidebar.
+
+| Category | Resources |
+|----------|-----------|
+| **Cluster** | Namespace, Node, PersistentVolume, ClusterRole, ClusterRoleBinding |
+| **Workloads** | Pod, Deployment, StatefulSet, DaemonSet, ReplicaSet, Job, CronJob |
+| **Config & Storage** | ConfigMap, Secret, PersistentVolumeClaim, StorageClass |
+| **Network** | Service, Ingress, NetworkPolicy, Endpoints |
+| **RBAC** | Role, RoleBinding, ServiceAccount |
+| **Custom Resources** | CRD resources defined in the cluster |
+
+### Viewing Resource Details
+
+Click any item in the resource list to open its detail panel on the right.
+
+#### Overview Tab
+
+<figure data-layout="center" data-align="center">
+<img src="/user-manual/kubernetes-access-control/web-client/web-client-resource-detail-overview.png" alt="QueryPie Web &gt; Web Client &gt; Resource Detail &gt; Overview" width="760" />
+<figcaption>
+QueryPie Web &gt; Web Client &gt; Resource Detail &gt; Overview
+</figcaption>
+</figure>
+
+View the metadata and status of the resource.
+
+* **Metadata**: Name, Namespace, UID, creation time, Status, Resource Version.
+* **Controlled By**: The parent resource managing this resource (e.g., Pod → DaemonSet). Click the name to navigate to the parent resource's detail view.
+* **Containers**: For Pods, view the image, Ready status, and Restarts count per container.
+* **Labels / Annotations**: Labels and annotations set on the resource.
+
+#### YAML Tab
+
+<figure data-layout="center" data-align="center">
+<img src="/user-manual/kubernetes-access-control/web-client/web-client-resource-detail-yaml.png" alt="QueryPie Web &gt; Web Client &gt; Resource Detail &gt; YAML" width="760" />
+<figcaption>
+QueryPie Web &gt; Web Client &gt; Resource Detail &gt; YAML
+</figcaption>
+</figure>
+
+View and edit the full YAML definition of the resource. Click `Edit` to switch to edit mode — changes are applied to the cluster immediately upon saving.
+
+#### Events Tab
+
+<figure data-layout="center" data-align="center">
+<img src="/user-manual/kubernetes-access-control/web-client/web-client-resource-detail-events.png" alt="QueryPie Web &gt; Web Client &gt; Resource Detail &gt; Events" width="760" />
+<figcaption>
+QueryPie Web &gt; Web Client &gt; Resource Detail &gt; Events
+</figcaption>
+</figure>
+
+View Kubernetes events related to this resource. Events are recorded for status changes, scheduling, and errors. If the Pod is running normally, no events may be displayed.
+
+#### Relations Tab
+
+<figure data-layout="center" data-align="center">
+<img src="/user-manual/kubernetes-access-control/web-client/web-client-resource-detail-relations.png" alt="QueryPie Web &gt; Web Client &gt; Resource Detail &gt; Relations" width="760" />
+<figcaption>
+QueryPie Web &gt; Web Client &gt; Resource Detail &gt; Relations
+</figcaption>
+</figure>
+
+Visualizes the hierarchy of resources related to the current resource as a tree. Understand parent/child relationships at a glance, and click any item to jump directly to that resource's detail view.
+
+### Viewing Pod Logs
+
+<figure data-layout="center" data-align="center">
+<img src="/user-manual/kubernetes-access-control/web-client/web-client-log-viewer.png" alt="QueryPie Web &gt; Web Client &gt; Log Viewer" width="760" />
+<figcaption>
+QueryPie Web &gt; Web Client &gt; Log Viewer
+</figcaption>
+</figure>
+
+1. Select **Pod** in the sidebar, then click the Pod you want to inspect.
+2. Click the `Logs` button in the upper right of the detail panel.
+3. Real-time logs for that Pod stream in the bottom panel.
+    1. Enter a keyword in the `Search logs` field to filter log output.
+    2. Check the `Follow` checkbox to automatically scroll to the latest log entries.
+
+### Accessing Pod Shell Terminal
+
+<figure data-layout="center" data-align="center">
+<img src="/user-manual/kubernetes-access-control/web-client/web-client-shell-terminal.png" alt="QueryPie Web &gt; Web Client &gt; Shell Terminal" width="760" />
+<figcaption>
+QueryPie Web &gt; Web Client &gt; Shell Terminal
+</figcaption>
+</figure>
+
+1. Select **Pod** in the sidebar, then click the Pod you want to connect to.
+2. Click the `Shell` button in the upper right of the detail panel.
+3. An interactive terminal opens in the bottom panel, where you can run commands directly inside the Pod container.
+
+<Callout type="info">
+Logs and Shell can be opened simultaneously as multiple tabs. Each tab displays the Pod name, allowing you to compare logs and terminals across multiple Pods at the same time.
+</Callout>
+
+<Callout type="info">
+**Q. What is the difference between Web Client and the traditional Agent method?**
+
+A. Web Client enables Kubernetes resource browsing, log viewing, and Shell access entirely from your browser. The Agent method offers broader integration with local tools such as `kubectl`. Both methods operate under the same permission model (Role, Policy).
+</Callout>
